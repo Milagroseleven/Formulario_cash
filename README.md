@@ -5,14 +5,14 @@ registre los movimientos de efectivo —ingresos y salidas— desde el móvil o 
 ordenador. Cada envío deja una fila en un Google Sheet y sube la imagen del
 justificante a Drive, en la carpeta que corresponde según el concepto.
 
-Está construido sobre Google Apps Script, igual que el formulario de vouchers
-de TPV del repositorio `conciliacion-ventas`.
+Está construido sobre Google Apps Script. Más adelante se migrará a la
+intranet, junto al formulario de TPV.
 
 ## Archivos
 
 | Archivo | Qué es |
 | --- | --- |
-| [`Code.gs`](Code.gs) | Lógica del servidor: validaciones, escritura en el Sheet, rutas y nombres de archivo en Drive. La tabla de conceptos está aquí, en `CONCEPTOS`. |
+| [`Code.gs`](Code.gs) | Lógica del servidor: configuración por sede, validaciones, escritura en las hojas, rutas y nombres de archivo en Drive. |
 | [`Index.html`](Index.html) | El formulario que ve el usuario. Lee los conceptos desde `Code.gs`, así que un concepto nuevo se agrega en un solo sitio. |
 | [`appsscript.json`](appsscript.json) | Configuración del proyecto de Apps Script (zona horaria y permisos). |
 
@@ -20,6 +20,49 @@ Cuidado con `Index.html`: si le haces clic desde aquí, el navegador **lo
 muestra como página web** en vez del código, porque es un archivo HTML. Para
 ver el código, ábrelo desde el Explorador con clic derecho → **Abrir con →
 Bloc de notas**.
+
+## Cada jefe ve solo su sede
+
+En Drive y en Sheets los permisos se dan por carpeta y por archivo, no por
+pestaña. Por eso el reparto es:
+
+| Qué | Contiene | Se comparte con |
+| --- | --- | --- |
+| Carpeta de la sede (`Caja Barcelona`, `Caja Madrid`, …) | Las imágenes de esa sede | El jefe de esa sede |
+| Hoja de la sede | Solo los movimientos de esa sede | El jefe de esa sede |
+| Hoja maestra (donde vive el script) | Todos los movimientos de todas las sedes | Contabilidad y dirección |
+
+Cada envío se escribe **dos veces**: en la hoja de su sede y en la maestra.
+
+Todo esto se declara en `SEDES_CONFIG`, al principio de `Code.gs`:
+
+```javascript
+const SEDES_CONFIG = {
+  'Barcelona': { carpetaId: '', hojaId: '' },
+  'Madrid':    { carpetaId: '', hojaId: '' },
+  'Sevilla':   { carpetaId: '', hojaId: '' },
+  'Valencia':  { carpetaId: '', hojaId: '' },
+};
+```
+
+- **`carpetaId`**: el ID de la carpeta de esa sede, esté donde esté (incluso
+  en una unidad compartida). Si se deja vacío, el formulario busca una
+  carpeta llamada `Caja <Sede>` y, si no existe, la crea en la unidad de la
+  cuenta que despliega.
+- **`hojaId`**: el ID del Google Sheet propio de esa sede. Si se deja vacío,
+  el movimiento solo se escribe en la hoja maestra.
+
+El ID es el trozo largo de la dirección:
+
+```
+drive.google.com/drive/folders/ESTO_ES_EL_ID
+docs.google.com/spreadsheets/d/ESTO_ES_EL_ID/edit
+```
+
+Importante: el formulario se ejecuta **con la cuenta que lo despliega**, así
+que esa cuenta necesita permiso de edición sobre todas las carpetas y todas
+las hojas. Los jefes no necesitan permiso sobre nada para poder registrar:
+solo lo necesitan para *consultar* lo suyo.
 
 ## Campos del formulario
 
@@ -43,69 +86,93 @@ Bloc de notas**.
 Los campos 7 y 8 solo ofrecen las **otras tres sedes**, nunca la elegida en el
 campo 1.
 
-### Conceptos, campos derivados y destino en Drive
+### Conceptos y campos derivados
 
 **Ingreso de efectivo** — el justificante siempre es "Imagen de cash" y la
 imagen es obligatoria.
 
-| Concepto | Matrícula | Detalle | Campo extra | Carpeta | Nombre del archivo |
-| --- | --- | --- | --- | --- | --- |
-| Reserva de moto | Obligatoria | Opcional | — | Reserva - Venta de moto | `4321 XYZ - Cash reserva moto - fecha y hora` |
-| Venta de moto | Obligatoria | Opcional | — | Reserva - Venta de moto | `4321 XYZ - Cash venta moto - fecha y hora` |
-| Mantenimiento | Obligatoria | Opcional | — | Reserva - Venta de moto | `4321 XYZ - Cash mantenimiento moto - fecha y hora` |
-| Ingreso de cash de otra sede | — | Opcional | Sede de origen | Otros | `Cash ingreso de sede - Sede - fecha y hora` |
-| Ajuste contable de caja | — | Obligatorio | — | Otros | `Cash ajuste contable caja ingreso - fecha y hora` |
-| Otros | Opcional | Obligatorio | — | Otros | `Cash otros ingresos - fecha y hora` |
+| Concepto | Matrícula | Detalle | Campo extra |
+| --- | --- | --- | --- |
+| Reserva de moto | Obligatoria | Opcional | — |
+| Venta de moto | Obligatoria | Opcional | — |
+| Mantenimiento | Obligatoria | Opcional | — |
+| Ingreso de cash de otra sede | — | Opcional | Sede de origen |
+| Ajuste contable de caja | — | Obligatorio | — |
+| Otros | Opcional | Obligatorio | — |
 
-**Salida de efectivo** — la carpeta depende de si el justificante es factura.
+**Salida de efectivo**
 
-| Concepto | Matrícula | Detalle | Campo extra | ¿Admite factura? | Carpeta | Nombre del archivo |
-| --- | --- | --- | --- | --- | --- | --- |
-| Gastos operativos / Servicios | — | Obligatorio | — | Sí | Gastos con factura / Gastos sin factura | `Cash Gasto operativo - con o sin factura - fecha y hora` |
-| Compra de moto | Obligatoria | Opcional | — | Sí | Gastos con factura / Gastos sin factura | `4321 XYZ - Cash compra moto - con o sin factura - fecha y hora` |
-| Devolución a cliente - reserva | Obligatoria | Opcional | — | No | Otros | `4321 XYZ - Cash devolución de reserva cliente - fecha y hora` |
-| Devolución a cliente - venta cancelada | Obligatoria | Opcional | — | No | Otros | `4321 XYZ - Cash devolución de venta cliente - fecha y hora` |
-| Devolución a cliente - pago en exceso | Obligatoria | Opcional | — | No | Otros | `4321 XYZ - Cash devolución pago en exceso cliente - fecha y hora` |
-| Envío de cash a otra sede | — | Opcional | Sede de destino | No | Otros | `Cash envío a sede - Sede - fecha y hora` |
-| Ajuste contable de caja | — | Obligatorio | — | No | Otros | `Cash ajuste contable caja salida - fecha y hora` |
-| Pago al personal interno | — | Opcional | Nombre de empleado | No | Otros | `Cash pago a personal interno - Nombre empleado - fecha y hora` |
-| Otros | Opcional | Obligatorio | — | Sí | Gastos con factura / Otros | `Cash otras salidas - con o sin factura - fecha y hora` |
-
-La ruta completa es:
-
-```
-Caja <Sede> / Ingreso Caja / <carpeta>
-Caja <Sede> / Salida Caja / <carpeta>
-```
-
-Por ejemplo: `Caja Valencia / Salida Caja / Gastos con factura`.
-
-**Las carpetas se crean solas** la primera vez que hace falta cada una. Si
-prefieres que vivan en un sitio concreto (por ejemplo dentro de una unidad
-compartida), crea antes las carpetas `Caja Barcelona`, `Caja Madrid`,
-`Caja Sevilla` y `Caja Valencia` donde quieras: el formulario busca por
-nombre y usa las que ya existan.
+| Concepto | Matrícula | Detalle | Campo extra |
+| --- | --- | --- | --- |
+| Gastos operativos / Servicios | — | Obligatorio | — |
+| Compra de moto | Obligatoria | Opcional | — |
+| Devolución a cliente - reserva | Obligatoria | Opcional | — |
+| Devolución a cliente - venta cancelada | Obligatoria | Opcional | — |
+| Devolución a cliente - pago en exceso | Obligatoria | Opcional | — |
+| Envío de cash a otra sede | — | Opcional | Sede de destino |
+| Ajuste contable de caja | — | Obligatorio | — |
+| Pago al personal interno | — | Opcional | Nombre de empleado |
+| Otros | Opcional | Obligatorio | — |
 
 ### Tipo de justificante (campo 13)
 
 - **En un ingreso** no hay nada que elegir: aparece la nota "Subir imagen de
   cash" y la imagen pasa a ser obligatoria. En el Sheet se guarda
   "Imagen de cash".
-- **En una salida de las que admiten factura** (gastos operativos, compra de
-  moto y otras salidas) hay que elegir entre:
+- **En una salida** hay que elegir entre:
   1. Factura / ticket de gasto a nombre de Sanchoyjote S.L. - NIF B72770191
   2. Proforma, albarán, imagen del cash, sin justificante, otros
 
   Sin imagen subida, la opción 1 está deshabilitada y queda marcada la 2. Al
   subir la imagen se habilita la 1 y **se libera la selección**, para que
   elija a conciencia.
-- **En el resto de las salidas** (devoluciones, envíos entre sedes, ajustes y
-  pagos al personal) no se elige nada: el justificante siempre es el tipo 2 y
-  el formulario lo muestra como una nota.
 
-## Columnas del Sheet
+## Dónde se guardan las imágenes
 
-Cada envío agrega una fila en la pestaña **Registro**:
+La ruta es:
+
+```
+<carpeta de la sede> / Ingreso Caja / <subcarpeta>
+<carpeta de la sede> / Salida Caja / <subcarpeta>
+```
+
+Por ejemplo: `Caja Valencia / Salida Caja / Gastos con factura`. Las
+subcarpetas se crean solas la primera vez que hace falta cada una.
+
+**Ingresos**
+
+| Concepto | Subcarpeta | Nombre del archivo |
+| --- | --- | --- |
+| Reserva de moto | Reserva - Venta de moto | `4321 XYZ - Cash reserva moto - fecha y hora` |
+| Venta de moto | Reserva - Venta de moto | `4321 XYZ - Cash venta moto - fecha y hora` |
+| Mantenimiento | Mantenimiento | `4321 XYZ - Cash mantenimiento moto - fecha y hora` |
+| Ingreso de cash de otra sede | Otros | `Cash ingreso de sede - Sede - fecha y hora` |
+| Ajuste contable de caja | Otros | `Cash ajuste contable caja ingreso - fecha y hora` |
+| Otros | Otros | `Cash otros ingresos - fecha y hora` |
+
+**Salidas** — con factura siempre van a `Gastos con factura`; sin factura,
+depende del concepto:
+
+| Concepto | Subcarpeta sin factura | Nombre del archivo |
+| --- | --- | --- |
+| Gastos operativos / Servicios | Gastos sin factura | `Cash Gasto operativo - con o sin factura - fecha y hora` |
+| Compra de moto | Gastos sin factura | `4321 XYZ - Cash compra moto - con o sin factura - fecha y hora` |
+| Devolución a cliente - reserva | Otros | `4321 XYZ - Cash devolución de reserva cliente - fecha y hora` |
+| Devolución a cliente - venta cancelada | Otros | `4321 XYZ - Cash devolución de venta cliente - fecha y hora` |
+| Devolución a cliente - pago en exceso | Otros | `4321 XYZ - Cash devolución pago en exceso cliente - fecha y hora` |
+| Envío de cash a otra sede | Otros | `Cash envío a sede - Sede - fecha y hora` |
+| Ajuste contable de caja | Otros | `Cash ajuste contable caja salida - fecha y hora` |
+| Pago al personal interno | Otros | `Cash pago a personal interno - Nombre empleado - fecha y hora` |
+| Otros | Otros | `Cash otras salidas - con o sin factura - fecha y hora` |
+
+En los conceptos cuyo nombre de archivo no lleva "con o sin factura", el
+sufijo `- con factura` se añade igualmente cuando se marca esa opción, para
+que el archivo no acabe en `Gastos con factura` sin que el nombre lo diga.
+
+## Columnas de las hojas
+
+Tanto la hoja maestra como la de cada sede tienen la pestaña **Registro** con
+estas columnas:
 
 `Fecha registro` · `ID movimiento` · `Sede` · `Responsable` ·
 `Tipo de movimiento` · `Concepto` · `Matrícula` · `Detalle` ·
@@ -118,27 +185,30 @@ Cada envío agrega una fila en la pestaña **Registro**:
   y obtener el saldo de caja.
 - **ID movimiento** (`MOV-20260824-A1B2`) se le muestra al usuario al
   terminar, con un botón para copiarlo. En un envío de cash a otra sede, el
-  formulario le pide expresamente que se lo pase al responsable de la sede
-  que recibe el dinero; esa sede lo escribe en **Código del envío** al
+  formulario le indica expresamente que lo copie y se lo envíe al responsable
+  de la sede de destino; esa sede lo escribe en **Código del envío** al
   registrar su ingreso, y así las dos filas quedan emparejadas.
 
 ## Despliegue (una sola vez)
 
-1. Crea un Google Sheet nuevo en blanco y nómbralo, por ejemplo,
-   **"Movimientos de caja"**.
-2. Dentro del Sheet: menú **Extensiones → Apps Script**.
-3. Borra el contenido del archivo `Código.gs` y pega el de `Code.gs`.
-4. Botón **+** junto a "Archivos" → **HTML** → nómbralo exactamente `Index`
+1. Crea el Google Sheet **maestro** en blanco y nómbralo, por ejemplo,
+   "Movimientos de caja - todas las sedes".
+2. Crea la hoja de cada sede y la carpeta de cada sede, y comparte cada una
+   con su jefe. Anota los IDs.
+3. Dentro del Sheet maestro: menú **Extensiones → Apps Script**.
+4. Borra el contenido del archivo `Código.gs` y pega el de `Code.gs`.
+   Rellena `SEDES_CONFIG` con los IDs del paso 2.
+5. Botón **+** junto a "Archivos" → **HTML** → nómbralo exactamente `Index`
    (sin extensión) y pega el contenido de `Index.html`.
-5. Engranaje ⚙️ (Configuración del proyecto) → marca **"Mostrar archivo de
+6. Engranaje ⚙️ (Configuración del proyecto) → marca **"Mostrar archivo de
    manifiesto 'appsscript.json' en el editor"**. Vuelve al Editor, abre el
    `appsscript.json` que aparece en la lista y reemplaza su contenido por el
    de este repositorio.
-6. Guarda todo (Ctrl+S).
-7. **Implementar → Nueva implementación** → Tipo: **Aplicación web** →
+7. Guarda todo (Ctrl+S).
+8. **Implementar → Nueva implementación** → Tipo: **Aplicación web** →
    Ejecutar como: **Yo** → Quién tiene acceso: **Cualquier usuario**.
    Autoriza los permisos de Sheets y Drive cuando Google los pida.
-8. Copia el enlace que termina en `/exec`: ese es el que se comparte.
+9. Copia el enlace que termina en `/exec`: ese es el que se comparte.
 
 Para que un cambio posterior llegue al enlace ya compartido:
 **Implementar → Administrar implementaciones → editar (lápiz) → Nueva
@@ -157,4 +227,4 @@ versión → Implementar**. Si creas una implementación nueva, el enlace cambia
   formulario de vouchers de TPV.
 - "Responsable" y "Nombre de empleado" son campos de texto libre.
 - La fecha y hora del nombre del archivo es la del **registro**, no la del
-  movimiento (que queda en el Sheet).
+  movimiento (que queda en la hoja).

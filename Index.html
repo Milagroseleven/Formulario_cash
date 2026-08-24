@@ -92,15 +92,6 @@
       font-size: 14px;
       color: #1e40af;
     }
-    .nota-gris {
-      margin-top: 6px;
-      padding: 12px;
-      background: #f3f4f6;
-      border-radius: 8px;
-      font-size: 14px;
-      color: #555;
-      line-height: 1.35;
-    }
     .oculto { display: none; }
     button#submitBtn {
       width: 100%;
@@ -167,6 +158,17 @@
       color: #2563eb;
       border: 2px solid #2563eb;
       margin-top: 0;
+    }
+    .aviso-envio {
+      margin-top: 12px;
+      padding: 12px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      color: #92400e;
+      font-size: 14px;
+      line-height: 1.4;
+      text-align: left;
     }
     #formWrap.hidden { display: none; }
   </style>
@@ -267,11 +269,6 @@
         </label>
       </div>
 
-      <div id="justificanteFijoWrap" class="oculto">
-        <label>El justificante adjunto es:</label>
-        <div class="nota-gris" id="justificanteFijoTexto"></div>
-      </div>
-
       <div id="errorBox"></div>
 
       <button id="submitBtn">Enviar</button>
@@ -286,7 +283,7 @@
         <div class="valor" id="codigoValor"></div>
         <button id="copyBtn" class="btn-secondary">📋 Copiar código</button>
       </div>
-      <p class="hint" id="avisoEnvio"></p>
+      <div id="avisoEnvio" class="aviso-envio oculto"></div>
 
       <button id="newBtn">Registrar otro movimiento</button>
     </div>
@@ -306,7 +303,6 @@
     });
     el('optFacturaTexto').textContent = CONFIG.justificanteFactura;
     el('optOtrosTexto').textContent = CONFIG.justificanteOtros;
-    el('justificanteFijoTexto').textContent = CONFIG.justificanteOtros;
 
     var fechaInput = el('fecha');
     var hoy = new Date().toISOString().slice(0, 10);
@@ -457,18 +453,13 @@
       var tipo = el('tipoMovimiento').value;
       var esIngreso = tipo === CONFIG.ingreso;
       var esSalida = tipo === CONFIG.salida;
-      var c = conceptoActual;
 
       marcarObligatorio('imagenLabel', esIngreso);
       mostrar('notaIngreso', esIngreso);
 
-      var conOpciones = esSalida && !!c && !!c.permiteFactura;
-      var conNotaFija = esSalida && !!c && !c.permiteFactura;
+      mostrar('justificanteWrap', esSalida);
 
-      mostrar('justificanteWrap', conOpciones);
-      mostrar('justificanteFijoWrap', conNotaFija);
-
-      if (!conOpciones) return;
+      if (!esSalida) return;
 
       var hayFoto = !!photoDataUrl;
       el('optFactura').disabled = !hayFoto;
@@ -530,7 +521,7 @@
       }
 
       var tipoJustificante = '';
-      if (!esIngreso && c.permiteFactura) {
+      if (!esIngreso) {
         if (el('optFactura').checked) tipoJustificante = CONFIG.justificanteFactura;
         else if (el('optOtros').checked) tipoJustificante = CONFIG.justificanteOtros;
         if (!tipoJustificante) return showError('Falta indicar qué tipo de justificante se adjunta.');
@@ -546,10 +537,11 @@
       google.script.run
         .withSuccessHandler(function(result) {
           el('codigoValor').textContent = result.id;
-          el('avisoEnvio').textContent = result.esEnvioEntreSedes
-            ? 'Copia el código y envíaselo al responsable de ' + result.sedeContraparte +
-              ', para que lo indique al registrar el ingreso del dinero.'
-            : '';
+          el('avisoEnvio').textContent = '📤 Copia este código y envíaselo al responsable de ' +
+            result.sedeContraparte + ', para que lo indique al registrar el ingreso del dinero ' +
+            'en su sede. Así los dos movimientos quedan emparejados.';
+          mostrar('avisoEnvio', result.esEnvioEntreSedes);
+          el('avisoEnvio').classList.add('aviso-envio');
           el('formWrap').classList.add('hidden');
           el('successBox').style.display = 'block';
         })

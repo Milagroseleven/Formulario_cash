@@ -2,22 +2,50 @@
  * Registro de movimientos de caja - Sanchoyjote S.L.
  *
  * Formulario web para que cada sede registre los movimientos de efectivo
- * (ingresos y salidas) desde el móvil o el ordenador: sede, responsable,
- * concepto, importe, fecha y la imagen del justificante. Cada envío deja
- * una fila en este Sheet y sube la imagen a Drive.
+ * (ingresos y salidas) desde el móvil o el ordenador. Cada envío deja una
+ * fila en el Sheet y sube la imagen del justificante a Drive.
  *
- * La estructura de conceptos vive en CONCEPTOS: es la única fuente de
+ * Los conceptos y sus reglas viven en CONCEPTOS: es la única fuente de
  * verdad. El formulario la lee de aquí para dibujar los campos, y el
- * servidor la usa de nuevo para validar lo que llega y para decidir en qué
- * carpeta de Drive y con qué nombre se guarda la imagen.
+ * servidor la usa de nuevo para validar y para decidir en qué carpeta de
+ * Drive y con qué nombre se guarda la imagen.
  */
+
+// ---------------------------------------------------------------------
+// CONFIGURACIÓN POR SEDE
+//
+// Cada jefe solo debe ver lo suyo, y en Drive y en Sheets los permisos se
+// dan por carpeta y por archivo. Por eso cada sede tiene su propia carpeta
+// y su propia hoja, que se comparten solo con quien corresponda.
+//
+//   carpetaId : ID de la carpeta de esa sede. Dentro se crean solas
+//               "Ingreso Caja" y "Salida Caja" con sus subcarpetas.
+//               Si se deja vacío, se busca (o se crea) una carpeta llamada
+//               "Caja <Sede>" en la unidad de la cuenta que despliega.
+//   hojaId    : ID del Google Sheet propio de esa sede. Si se deja vacío,
+//               solo se escribe en la hoja maestra.
+//
+// El ID es el trozo largo de la URL:
+//   carpeta -> drive.google.com/drive/folders/ESTO_ES_EL_ID
+//   hoja    -> docs.google.com/spreadsheets/d/ESTO_ES_EL_ID/edit
+//
+// La hoja maestra es esta misma en la que vive el script, y contiene todos
+// los movimientos de todas las sedes: se comparte solo con contabilidad y
+// dirección.
+// ---------------------------------------------------------------------
+const SEDES_CONFIG = {
+  'Barcelona': { carpetaId: '', hojaId: '' },
+  'Madrid': { carpetaId: '', hojaId: '' },
+  'Sevilla': { carpetaId: '', hojaId: '' },
+  'Valencia': { carpetaId: '', hojaId: '' },
+};
 
 const SHEET_NAME = 'Registro';
 
 const EMPRESA = 'Sanchoyjote S.L.';
 const NIF = 'B72770191';
 
-const SEDES = ['Barcelona', 'Madrid', 'Sevilla', 'Valencia'];
+const SEDES = Object.keys(SEDES_CONFIG);
 
 const INGRESO = 'Ingreso de efectivo';
 const SALIDA = 'Salida de efectivo';
@@ -38,13 +66,11 @@ const JUSTIFICANTE_INGRESO = 'Imagen de cash';
  *   detalleAyuda        : texto de ayuda debajo del campo Detalle
  *   extra               : 'sedeOrigen' | 'sedeDestino' | 'empleado' | null
  *   archivo             : base del nombre del archivo en Drive
- *   carpeta             : subcarpeta de Drive (ingresos, y salidas sin
- *                         opción de factura)
- *   permiteFactura      : true si el justificante puede ser factura/ticket
- *                         a nombre de la empresa
- *   carpetaConFactura /
- *   carpetaSinFactura   : subcarpeta según lo que se elija (solo cuando
- *                         permiteFactura es true)
+ *   carpeta             : subcarpeta de destino (ingresos)
+ *   carpetaSinFactura   : subcarpeta cuando la salida no lleva factura
+ *                         (con factura siempre va a "Gastos con factura")
+ *   sufijoFactura       : true si el nombre del archivo lleva siempre
+ *                         "con factura" / "sin factura"
  */
 const CONCEPTOS = {};
 
@@ -62,7 +88,7 @@ CONCEPTOS[INGRESO] = [
   {
     nombre: 'Mantenimiento', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
-    carpeta: 'Reserva - Venta de moto', archivo: 'Cash mantenimiento moto',
+    carpeta: 'Mantenimiento', archivo: 'Cash mantenimiento moto',
   },
   {
     nombre: 'Ingreso de cash de otra sede', matricula: null, detalle: 'opcional',
@@ -85,49 +111,51 @@ CONCEPTOS[SALIDA] = [
   {
     nombre: 'Gastos operativos / Servicios', matricula: null, detalle: 'obligatorio',
     detalleAyuda: '', extra: null, archivo: 'Cash Gasto operativo',
-    permiteFactura: true, carpetaConFactura: 'Gastos con factura', carpetaSinFactura: 'Gastos sin factura',
+    carpetaSinFactura: 'Gastos sin factura', sufijoFactura: true,
   },
   {
     nombre: 'Compra de moto', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null, archivo: 'Cash compra moto',
-    permiteFactura: true, carpetaConFactura: 'Gastos con factura', carpetaSinFactura: 'Gastos sin factura',
+    carpetaSinFactura: 'Gastos sin factura', sufijoFactura: true,
   },
   {
     nombre: 'Devolución a cliente - reserva', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
-    carpeta: 'Otros', archivo: 'Cash devolución de reserva cliente',
+    archivo: 'Cash devolución de reserva cliente', carpetaSinFactura: 'Otros',
   },
   {
     nombre: 'Devolución a cliente - venta cancelada', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
-    carpeta: 'Otros', archivo: 'Cash devolución de venta cliente',
+    archivo: 'Cash devolución de venta cliente', carpetaSinFactura: 'Otros',
   },
   {
     nombre: 'Devolución a cliente - pago en exceso', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
-    carpeta: 'Otros', archivo: 'Cash devolución pago en exceso cliente',
+    archivo: 'Cash devolución pago en exceso cliente', carpetaSinFactura: 'Otros',
   },
   {
     nombre: 'Envío de cash a otra sede', matricula: null, detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: 'sedeDestino',
-    carpeta: 'Otros', archivo: 'Cash envío a sede',
+    archivo: 'Cash envío a sede', carpetaSinFactura: 'Otros',
   },
   {
     nombre: 'Ajuste contable de caja', matricula: null, detalle: 'obligatorio',
     detalleAyuda: AYUDA_AJUSTE, extra: null,
-    carpeta: 'Otros', archivo: 'Cash ajuste contable caja salida',
+    archivo: 'Cash ajuste contable caja salida', carpetaSinFactura: 'Otros',
   },
   {
     nombre: 'Pago al personal interno', matricula: null, detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: 'empleado',
-    carpeta: 'Otros', archivo: 'Cash pago a personal interno',
+    archivo: 'Cash pago a personal interno', carpetaSinFactura: 'Otros',
   },
   {
     nombre: 'Otros', matricula: 'opcional', detalle: 'obligatorio',
     detalleAyuda: AYUDA_OTROS, extra: null, archivo: 'Cash otras salidas',
-    permiteFactura: true, carpetaConFactura: 'Gastos con factura', carpetaSinFactura: 'Otros',
+    carpetaSinFactura: 'Otros', sufijoFactura: true,
   },
 ];
+
+const CARPETA_CON_FACTURA = 'Gastos con factura';
 
 const HEADERS = [
   'Fecha registro',
@@ -175,12 +203,21 @@ function getConcepto_(tipoMovimiento, nombre) {
 }
 
 /**
- * Busca la carpeta por nombre en todo el Drive al que tiene acceso quien
- * despliega. Así, si las carpetas "Caja Barcelona", "Caja Madrid", etc. ya
- * existen (o se crean después en una unidad compartida), el formulario las
- * usa en vez de crear otras sueltas en la raíz.
+ * Carpeta raíz de la sede. Si hay ID configurado se usa esa carpeta, esté
+ * donde esté (incluida una unidad compartida). Si no, se busca por nombre
+ * y, como último recurso, se crea.
  */
-function getCarpetaRaiz_(nombre) {
+function getCarpetaSede_(sede) {
+  const conf = SEDES_CONFIG[sede] || {};
+  if (conf.carpetaId) {
+    try {
+      return DriveApp.getFolderById(conf.carpetaId);
+    } catch (err) {
+      throw new Error('No se pudo abrir la carpeta configurada para ' + sede +
+        '. Revisa el carpetaId en SEDES_CONFIG.');
+    }
+  }
+  const nombre = 'Caja ' + sede;
   const it = DriveApp.getFoldersByName(nombre);
   if (it.hasNext()) return it.next();
   return DriveApp.createFolder(nombre);
@@ -192,11 +229,11 @@ function getSubCarpeta_(parent, nombre) {
   return parent.createFolder(nombre);
 }
 
-function getSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
+/** Devuelve la pestaña "Registro" del libro, creándola con cabeceras. */
+function getHojaRegistro_(spreadsheet) {
+  let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+    sheet = spreadsheet.insertSheet(SHEET_NAME);
   }
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(HEADERS);
@@ -279,7 +316,7 @@ function submitMovimiento(data) {
   if (esIngreso) {
     tipoJustificante = JUSTIFICANTE_INGRESO;
     subCarpeta = concepto.carpeta;
-  } else if (concepto.permiteFactura) {
+  } else {
     tipoJustificante = data.tipoJustificante;
     if (tipoJustificante !== JUSTIFICANTE_FACTURA && tipoJustificante !== JUSTIFICANTE_OTROS) {
       throw new Error('Falta indicar qué tipo de justificante se adjunta.');
@@ -288,11 +325,7 @@ function submitMovimiento(data) {
     if (conFactura && !data.photoBase64) {
       throw new Error('Para marcar "factura / ticket" hay que adjuntar la imagen.');
     }
-    subCarpeta = conFactura ? concepto.carpetaConFactura : concepto.carpetaSinFactura;
-  } else {
-    // Conceptos que nunca llevan factura a nombre de la empresa.
-    tipoJustificante = JUSTIFICANTE_OTROS;
-    subCarpeta = concepto.carpeta;
+    subCarpeta = conFactura ? CARPETA_CON_FACTURA : concepto.carpetaSinFactura;
   }
 
   const ahora = new Date();
@@ -300,8 +333,8 @@ function submitMovimiento(data) {
 
   let fileUrl = '';
   if (data.photoBase64) {
-    // Ruta: Caja <Sede> / Ingreso Caja | Salida Caja / <subcarpeta>
-    const raiz = getCarpetaRaiz_('Caja ' + sanitize_(data.sede));
+    // Ruta: <carpeta de la sede> / Ingreso Caja | Salida Caja / <subcarpeta>
+    const raiz = getCarpetaSede_(data.sede);
     const nivel = getSubCarpeta_(raiz, esIngreso ? 'Ingreso Caja' : 'Salida Caja');
     const carpeta = getSubCarpeta_(nivel, subCarpeta);
 
@@ -312,7 +345,11 @@ function submitMovimiento(data) {
       partes.push(data.sedeContraparte);
     }
     if (concepto.extra === 'empleado') partes.push(data.empleado);
-    if (concepto.permiteFactura) partes.push(conFactura ? 'con factura' : 'sin factura');
+    // El sufijo va siempre en los conceptos que lo llevan en el esquema; en
+    // el resto, solo cuando hay factura, para que no quede un archivo en
+    // "Gastos con factura" sin que el nombre lo diga.
+    if (concepto.sufijoFactura) partes.push(conFactura ? 'con factura' : 'sin factura');
+    else if (conFactura) partes.push('con factura');
     partes.push(Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd HH.mm'));
 
     const nombreArchivo = sanitize_(partes.join(' - ')) + '.jpg';
@@ -321,8 +358,7 @@ function submitMovimiento(data) {
     fileUrl = carpeta.createFile(blob).getUrl();
   }
 
-  const sheet = getSheet_();
-  sheet.appendRow([
+  const fila = [
     ahora,
     id,
     data.sede,
@@ -339,7 +375,23 @@ function submitMovimiento(data) {
     data.fecha,
     tipoJustificante,
     fileUrl,
-  ]);
+  ];
+
+  // Hoja propia de la sede (la que ve su jefe), si está configurada.
+  const hojaId = (SEDES_CONFIG[data.sede] || {}).hojaId;
+  if (hojaId) {
+    let libroSede;
+    try {
+      libroSede = SpreadsheetApp.openById(hojaId);
+    } catch (err) {
+      throw new Error('No se pudo abrir la hoja configurada para ' + data.sede +
+        '. Revisa el hojaId en SEDES_CONFIG.');
+    }
+    getHojaRegistro_(libroSede).appendRow(fila);
+  }
+
+  // Hoja maestra: la que contiene todas las sedes.
+  getHojaRegistro_(SpreadsheetApp.getActiveSpreadsheet()).appendRow(fila);
 
   return {
     id: id,
