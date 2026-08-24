@@ -19,25 +19,21 @@
       margin: 0 auto;
       box-shadow: 0 2px 10px rgba(0,0,0,0.06);
     }
-    h1 {
-      font-size: 19px;
-      margin: 0 0 4px;
-    }
-    .subtitle {
-      color: #666;
-      font-size: 13px;
-      margin: 0 0 20px;
-    }
+    h1 { font-size: 19px; margin: 0 0 4px; }
+    .subtitle { color: #666; font-size: 13px; margin: 0 0 20px; }
     label {
       display: block;
       font-weight: 600;
       font-size: 14px;
       margin: 18px 0 6px;
     }
-    .req::after {
-      content: ' *';
-      color: #d33;
+    label .formato {
+      font-weight: 400;
+      color: #888;
+      font-size: 12px;
+      margin-left: 6px;
     }
+    .req::after { content: ' *'; color: #d33; }
     input[type="text"], input[type="number"], input[type="date"], select {
       width: 100%;
       padding: 12px;
@@ -63,17 +59,9 @@
       color: #2563eb;
       cursor: pointer;
     }
-    .photo-btns {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .photo-btns { display: flex; flex-direction: column; gap: 10px; }
     #fileInputCamera, #fileInputGallery { display: none; }
-    #preview {
-      margin-top: 12px;
-      display: none;
-      text-align: center;
-    }
+    #preview { margin-top: 12px; display: none; text-align: center; }
     #preview img {
       max-width: 100%;
       max-height: 260px;
@@ -95,11 +83,7 @@
     .opt input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
     .opt.selected { border-color: #2563eb; background: #eff6ff; }
     .opt.disabled { opacity: 0.5; cursor: not-allowed; }
-    .hint {
-      font-size: 12px;
-      color: #888;
-      margin-top: 4px;
-    }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; }
     .nota {
       margin-top: 10px;
       padding: 12px;
@@ -107,6 +91,15 @@
       border-radius: 8px;
       font-size: 14px;
       color: #1e40af;
+    }
+    .nota-gris {
+      margin-top: 6px;
+      padding: 12px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #555;
+      line-height: 1.35;
     }
     .oculto { display: none; }
     button#submitBtn {
@@ -131,13 +124,31 @@
       border-radius: 8px;
       font-size: 14px;
     }
-    #successBox {
-      display: none;
-      text-align: center;
-      padding: 10px;
-    }
+    #successBox { display: none; text-align: center; padding: 10px; }
     #successBox .check { font-size: 48px; margin-bottom: 8px; }
     #successBox p { font-size: 14px; color: #444; }
+    .codigo-caja {
+      margin: 16px 0 4px;
+      padding: 14px;
+      border: 2px dashed #2563eb;
+      border-radius: 10px;
+      background: #eff6ff;
+    }
+    .codigo-caja .etiqueta {
+      font-size: 12px;
+      color: #1e40af;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .codigo-caja .valor {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin: 6px 0 10px;
+      word-break: break-all;
+    }
     #successBox button {
       display: block;
       width: 100%;
@@ -151,57 +162,70 @@
       color: #fff;
       cursor: pointer;
     }
+    #successBox button.btn-secondary {
+      background: #fff;
+      color: #2563eb;
+      border: 2px solid #2563eb;
+      margin-top: 0;
+    }
     #formWrap.hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Registro de movimientos de caja</h1>
-    <p class="subtitle">Sanchoyjote SL</p>
+    <p class="subtitle" id="subtitulo"></p>
 
     <div id="formWrap">
       <!-- 1er campo -->
       <label class="req">Sede</label>
       <select id="sede">
-        <option value="" disabled selected>Elige una opción</option>
+        <option value="" disabled selected>Selecciona...</option>
       </select>
 
       <!-- 2do campo -->
       <label class="req">Responsable</label>
-      <input type="text" id="responsable" placeholder="Nombre y apellido">
+      <input type="text" id="responsable" placeholder="Nombre del responsable">
 
       <!-- 3er campo -->
       <label class="req">Tipo de movimiento</label>
       <select id="tipoMovimiento">
-        <option value="" disabled selected>Elige una opción</option>
+        <option value="" disabled selected>Selecciona...</option>
       </select>
 
       <!-- 4to campo -->
       <div id="conceptoWrap" class="oculto">
         <label class="req" id="conceptoLabel">Concepto</label>
         <select id="concepto">
-          <option value="" disabled selected>Elige una opción</option>
+          <option value="" disabled selected>Selecciona...</option>
         </select>
       </div>
 
       <!-- 5to campo -->
       <div id="matriculaWrap" class="oculto">
-        <label id="matriculaLabel">Matrícula</label>
-        <input type="text" id="matricula" placeholder="Ej: 7532 MNP" style="text-transform:uppercase;">
+        <label><span id="matriculaLabel">Matrícula</span><span class="formato">(1111 AAA / A 1111 AAA)</span></label>
+        <input type="text" id="matricula" placeholder="1111 AAA" style="text-transform:uppercase;">
       </div>
 
       <!-- 7mo / 8vo campo -->
       <div id="sedeContraparteWrap" class="oculto">
         <label class="req" id="sedeContraparteLabel">Sede de origen del cash</label>
         <select id="sedeContraparte">
-          <option value="" disabled selected>Elige una opción</option>
+          <option value="" disabled selected>Selecciona...</option>
         </select>
+      </div>
+
+      <!-- Código del envío, para emparejar con la sede que envió el cash -->
+      <div id="codigoEnvioWrap" class="oculto">
+        <label>Código del envío</label>
+        <input type="text" id="codigoEnvio" placeholder="MOV-20260824-A1B2" style="text-transform:uppercase;">
+        <div class="hint">Opcional. Es el código que te pasa la sede que envió el dinero.</div>
       </div>
 
       <!-- 9no campo -->
       <div id="empleadoWrap" class="oculto">
         <label class="req">Nombre de empleado</label>
-        <input type="text" id="empleado" placeholder="Nombre y apellido">
+        <input type="text" id="empleado" placeholder="Nombre del empleado">
       </div>
 
       <!-- 6to campo -->
@@ -221,6 +245,7 @@
 
       <!-- 12vo campo -->
       <label id="imagenLabel">Imagen del justificante</label>
+      <div id="notaIngreso" class="nota oculto">📌 Subir imagen de cash</div>
       <div class="photo-btns">
         <div class="photo-btn" id="cameraBtn">📷 Hacer foto</div>
         <div class="photo-btn" id="galleryBtn">🖼️ Elegir de la galería</div>
@@ -230,8 +255,6 @@
       <div id="preview"><img id="previewImg"></div>
 
       <!-- 13vo campo -->
-      <div id="notaIngreso" class="nota oculto">📌 Subir imagen de cash</div>
-
       <div id="justificanteWrap" class="oculto">
         <label class="req">El justificante adjunto es:</label>
         <label class="opt" id="optFacturaWrap">
@@ -244,6 +267,11 @@
         </label>
       </div>
 
+      <div id="justificanteFijoWrap" class="oculto">
+        <label>El justificante adjunto es:</label>
+        <div class="nota-gris" id="justificanteFijoTexto"></div>
+      </div>
+
       <div id="errorBox"></div>
 
       <button id="submitBtn">Enviar</button>
@@ -252,7 +280,14 @@
     <div id="successBox">
       <div class="check">✅</div>
       <p><b>Guardado correctamente.</b><br>El movimiento ya está en el Sheet.</p>
-      <p class="hint" id="idMovimiento"></p>
+
+      <div class="codigo-caja">
+        <div class="etiqueta">Código del movimiento</div>
+        <div class="valor" id="codigoValor"></div>
+        <button id="copyBtn" class="btn-secondary">📋 Copiar código</button>
+      </div>
+      <p class="hint" id="avisoEnvio"></p>
+
       <button id="newBtn">Registrar otro movimiento</button>
     </div>
   </div>
@@ -263,15 +298,15 @@
     var el = function(id) { return document.getElementById(id); };
     var conceptoActual = null;
 
-    // --- Carga inicial de los desplegables fijos -------------------------
-    CONFIG.sedes.forEach(function(s) {
-      el('sede').appendChild(new Option(s, s));
-    });
+    // --- Carga inicial --------------------------------------------------
+    el('subtitulo').textContent = CONFIG.empresa + ' · NIF ' + CONFIG.nif;
+    CONFIG.sedes.forEach(function(s) { el('sede').appendChild(new Option(s, s)); });
     [CONFIG.ingreso, CONFIG.salida].forEach(function(t) {
       el('tipoMovimiento').appendChild(new Option(t, t));
     });
     el('optFacturaTexto').textContent = CONFIG.justificanteFactura;
     el('optOtrosTexto').textContent = CONFIG.justificanteOtros;
+    el('justificanteFijoTexto').textContent = CONFIG.justificanteOtros;
 
     var fechaInput = el('fecha');
     var hoy = new Date().toISOString().slice(0, 10);
@@ -284,7 +319,7 @@
     }
 
     function marcarObligatorio(labelId, obligatorio) {
-      el(labelId).className = obligatorio ? 'req' : '';
+      el(labelId).classList.toggle('req', obligatorio);
     }
 
     function showError(msg) {
@@ -294,9 +329,7 @@
       box.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function hideError() {
-      el('errorBox').style.display = 'none';
-    }
+    function hideError() { el('errorBox').style.display = 'none'; }
 
     // --- 3er campo: tipo de movimiento ----------------------------------
     el('tipoMovimiento').addEventListener('change', function() {
@@ -309,7 +342,7 @@
 
       var select = el('concepto');
       select.innerHTML = '';
-      var vacia = new Option('Elige una opción', '');
+      var vacia = new Option('Selecciona...', '');
       vacia.disabled = true;
       vacia.selected = true;
       select.appendChild(vacia);
@@ -320,7 +353,6 @@
       mostrar('conceptoWrap', true);
       conceptoActual = null;
       aplicarConcepto();
-      actualizarJustificante();
     });
 
     // --- 4to campo: concepto --------------------------------------------
@@ -341,9 +373,6 @@
       mostrar('matriculaWrap', !!(c && c.matricula));
       if (c && c.matricula) {
         marcarObligatorio('matriculaLabel', c.matricula === 'obligatorio');
-        el('matricula').placeholder = c.matricula === 'obligatorio'
-          ? 'Ej: 7532 MNP'
-          : 'Ej: 7532 MNP (opcional)';
       }
 
       mostrar('detalleWrap', !!(c && c.detalle));
@@ -361,7 +390,12 @@
         cargarSedesContraparte();
       }
 
+      // El código solo se pide en la sede que recibe el dinero.
+      mostrar('codigoEnvioWrap', !!(c && c.extra === 'sedeOrigen'));
+
       mostrar('empleadoWrap', !!(c && c.extra === 'empleado'));
+
+      actualizarJustificante();
     }
 
     // Las sedes de origen / destino son todas menos la del 1er campo.
@@ -370,7 +404,7 @@
       var select = el('sedeContraparte');
       var elegida = select.value;
       select.innerHTML = '';
-      var vacia = new Option('Elige una opción', '');
+      var vacia = new Option('Selecciona...', '');
       vacia.disabled = true;
       vacia.selected = true;
       select.appendChild(vacia);
@@ -402,6 +436,10 @@
         photoDataUrl = ev.target.result;
         el('previewImg').src = photoDataUrl;
         el('preview').style.display = 'block';
+        // Al subir la imagen se libera la elección: con justificante ya
+        // pueden aplicar las dos opciones, así que tiene que elegir.
+        el('optFactura').checked = false;
+        el('optOtros').checked = false;
         actualizarJustificante();
       };
       reader.readAsDataURL(file);
@@ -409,25 +447,34 @@
     el('fileInputCamera').addEventListener('change', onPhotoSelected);
     el('fileInputGallery').addEventListener('change', onPhotoSelected);
 
-    // En un ingreso la imagen es obligatoria y el 13vo campo es solo una
-    // nota. En una salida la imagen es opcional, pero hay que declarar que
-    // se adjunta: sin imagen, la unica opcion posible es la segunda.
+    // En un ingreso la imagen es obligatoria y el 13vo campo es solo la
+    // nota "Subir imagen de cash". En una salida la imagen es opcional,
+    // pero hay que declarar qué se adjunta: sin imagen, la única opción
+    // posible es la segunda. Hay conceptos (devoluciones, envíos entre
+    // sedes, ajustes, pagos a personal) que nunca llevan factura a nombre
+    // de la empresa: ahí no se elige, se informa.
     function actualizarJustificante() {
       var tipo = el('tipoMovimiento').value;
       var esIngreso = tipo === CONFIG.ingreso;
       var esSalida = tipo === CONFIG.salida;
+      var c = conceptoActual;
 
       marcarObligatorio('imagenLabel', esIngreso);
-      el('imagenLabel').textContent = 'Imagen del justificante';
       mostrar('notaIngreso', esIngreso);
-      mostrar('justificanteWrap', esSalida);
 
-      if (!esSalida) return;
+      var conOpciones = esSalida && !!c && !!c.permiteFactura;
+      var conNotaFija = esSalida && !!c && !c.permiteFactura;
+
+      mostrar('justificanteWrap', conOpciones);
+      mostrar('justificanteFijoWrap', conNotaFija);
+
+      if (!conOpciones) return;
 
       var hayFoto = !!photoDataUrl;
       el('optFactura').disabled = !hayFoto;
       el('optFacturaWrap').classList.toggle('disabled', !hayFoto);
       if (!hayFoto) {
+        el('optFactura').checked = false;
         el('optOtros').checked = true;
       }
       pintarSeleccion();
@@ -440,7 +487,7 @@
     el('optFactura').addEventListener('change', pintarSeleccion);
     el('optOtros').addEventListener('change', pintarSeleccion);
 
-    // --- Envio ----------------------------------------------------------
+    // --- Envío ----------------------------------------------------------
     el('submitBtn').addEventListener('click', function() {
       hideError();
 
@@ -450,6 +497,7 @@
       var matricula = el('matricula').value.trim().toUpperCase();
       var detalle = el('detalle').value.trim();
       var sedeContraparte = el('sedeContraparte').value;
+      var codigoEnvio = el('codigoEnvio').value.trim().toUpperCase();
       var empleado = el('empleado').value.trim();
       var importe = el('importe').value;
       var fecha = el('fecha').value;
@@ -482,7 +530,7 @@
       }
 
       var tipoJustificante = '';
-      if (!esIngreso) {
+      if (!esIngreso && c.permiteFactura) {
         if (el('optFactura').checked) tipoJustificante = CONFIG.justificanteFactura;
         else if (el('optOtros').checked) tipoJustificante = CONFIG.justificanteOtros;
         if (!tipoJustificante) return showError('Falta indicar qué tipo de justificante se adjunta.');
@@ -497,7 +545,11 @@
 
       google.script.run
         .withSuccessHandler(function(result) {
-          el('idMovimiento').textContent = 'Referencia: ' + result.id;
+          el('codigoValor').textContent = result.id;
+          el('avisoEnvio').textContent = result.esEnvioEntreSedes
+            ? 'Copia el código y envíaselo al responsable de ' + result.sedeContraparte +
+              ', para que lo indique al registrar el ingreso del dinero.'
+            : '';
           el('formWrap').classList.add('hidden');
           el('successBox').style.display = 'block';
         })
@@ -514,6 +566,7 @@
           matricula: matricula,
           detalle: detalle,
           sedeContraparte: sedeContraparte,
+          codigoEnvio: codigoEnvio,
           empleado: empleado,
           importe: importe,
           fecha: fecha,
@@ -521,6 +574,38 @@
           photoBase64: base64,
           photoMimeType: mimeType,
         });
+    });
+
+    // --- Copiar el código -----------------------------------------------
+    el('copyBtn').addEventListener('click', function() {
+      var texto = el('codigoValor').textContent;
+      var btn = el('copyBtn');
+
+      function ok() {
+        btn.textContent = '✅ Copiado';
+        setTimeout(function() { btn.textContent = '📋 Copiar código'; }, 2000);
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(ok, copiarConSeleccion);
+      } else {
+        copiarConSeleccion();
+      }
+
+      // El portapapeles moderno no siempre está permitido dentro del marco
+      // en el que Apps Script publica la página; este es el camino de siempre.
+      function copiarConSeleccion() {
+        var input = document.createElement('textarea');
+        input.value = texto;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        try { document.execCommand('copy'); ok(); } catch (err) {
+          btn.textContent = 'Copia el código a mano';
+        }
+        document.body.removeChild(input);
+      }
     });
 
     // --- Registrar otro -------------------------------------------------
@@ -535,15 +620,15 @@
       el('tipoMovimiento').selectedIndex = 0;
       el('matricula').value = '';
       el('detalle').value = '';
+      el('codigoEnvio').value = '';
       el('empleado').value = '';
       el('importe').value = '';
       fechaInput.value = hoy;
       conceptoActual = null;
       mostrar('conceptoWrap', false);
-      aplicarConcepto();
       el('optFactura').checked = false;
       el('optOtros').checked = false;
-      actualizarJustificante();
+      aplicarConcepto();
       hideError();
       var btn = el('submitBtn');
       btn.disabled = false;

@@ -1,5 +1,5 @@
 /**
- * Registro de movimientos de caja - Sanchoyjote SL
+ * Registro de movimientos de caja - Sanchoyjote S.L.
  *
  * Formulario web para que cada sede registre los movimientos de efectivo
  * (ingresos y salidas) desde el móvil o el ordenador: sede, responsable,
@@ -8,11 +8,14 @@
  *
  * La estructura de conceptos vive en CONCEPTOS: es la única fuente de
  * verdad. El formulario la lee de aquí para dibujar los campos, y el
- * servidor la usa de nuevo para validar lo que llega.
+ * servidor la usa de nuevo para validar lo que llega y para decidir en qué
+ * carpeta de Drive y con qué nombre se guarda la imagen.
  */
 
 const SHEET_NAME = 'Registro';
-const ROOT_FOLDER_NAME = 'Movimientos de Caja';
+
+const EMPRESA = 'Sanchoyjote S.L.';
+const NIF = 'B72770191';
 
 const SEDES = ['Barcelona', 'Madrid', 'Sevilla', 'Valencia'];
 
@@ -23,38 +26,108 @@ const AYUDA_OPCIONAL = 'Opcional';
 const AYUDA_AJUSTE = 'Especificar ajuste contable de caja';
 const AYUDA_OTROS = 'Especificar "otros"';
 
+// Opciones del campo 13 en una salida de efectivo.
+const JUSTIFICANTE_FACTURA = 'Factura / ticket de gasto a nombre de ' + EMPRESA + ' - NIF ' + NIF;
+const JUSTIFICANTE_OTROS = 'Proforma, albarán, imagen del cash, sin justificante, otros';
+// Lo que se guarda en la columna cuando el movimiento es un ingreso.
+const JUSTIFICANTE_INGRESO = 'Imagen de cash';
+
 /**
  * Para cada concepto:
  *   matricula / detalle : 'obligatorio' | 'opcional' | null (no se muestra)
  *   detalleAyuda        : texto de ayuda debajo del campo Detalle
  *   extra               : 'sedeOrigen' | 'sedeDestino' | 'empleado' | null
+ *   archivo             : base del nombre del archivo en Drive
+ *   carpeta             : subcarpeta de Drive (ingresos, y salidas sin
+ *                         opción de factura)
+ *   permiteFactura      : true si el justificante puede ser factura/ticket
+ *                         a nombre de la empresa
+ *   carpetaConFactura /
+ *   carpetaSinFactura   : subcarpeta según lo que se elija (solo cuando
+ *                         permiteFactura es true)
  */
 const CONCEPTOS = {};
+
 CONCEPTOS[INGRESO] = [
-  { nombre: 'Reserva de moto', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Venta de moto', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Mantenimiento', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Ingreso de cash de otra sede', matricula: null, detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: 'sedeOrigen' },
-  { nombre: 'Ajuste contable de caja', matricula: null, detalle: 'obligatorio', detalleAyuda: AYUDA_AJUSTE, extra: null },
-  { nombre: 'Otros', matricula: 'opcional', detalle: 'obligatorio', detalleAyuda: AYUDA_OTROS, extra: null },
-];
-CONCEPTOS[SALIDA] = [
-  { nombre: 'Gastos operativos / Servicios', matricula: null, detalle: 'obligatorio', detalleAyuda: '', extra: null },
-  { nombre: 'Compra de moto', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Devolución a cliente - reserva', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Devolución a cliente - venta cancelada', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Devolución a cliente - pago en exceso', matricula: 'obligatorio', detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: null },
-  { nombre: 'Envío de cash a otra sede', matricula: null, detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: 'sedeDestino' },
-  { nombre: 'Ajuste contable de caja', matricula: null, detalle: 'obligatorio', detalleAyuda: AYUDA_AJUSTE, extra: null },
-  { nombre: 'Pago al personal interno', matricula: null, detalle: 'opcional', detalleAyuda: AYUDA_OPCIONAL, extra: 'empleado' },
-  { nombre: 'Otros', matricula: 'opcional', detalle: 'obligatorio', detalleAyuda: AYUDA_OTROS, extra: null },
+  {
+    nombre: 'Reserva de moto', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null,
+    carpeta: 'Reserva - Venta de moto', archivo: 'Cash reserva moto',
+  },
+  {
+    nombre: 'Venta de moto', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null,
+    carpeta: 'Reserva - Venta de moto', archivo: 'Cash venta moto',
+  },
+  {
+    nombre: 'Mantenimiento', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null,
+    carpeta: 'Reserva - Venta de moto', archivo: 'Cash mantenimiento moto',
+  },
+  {
+    nombre: 'Ingreso de cash de otra sede', matricula: null, detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: 'sedeOrigen',
+    carpeta: 'Otros', archivo: 'Cash ingreso de sede',
+  },
+  {
+    nombre: 'Ajuste contable de caja', matricula: null, detalle: 'obligatorio',
+    detalleAyuda: AYUDA_AJUSTE, extra: null,
+    carpeta: 'Otros', archivo: 'Cash ajuste contable caja ingreso',
+  },
+  {
+    nombre: 'Otros', matricula: 'opcional', detalle: 'obligatorio',
+    detalleAyuda: AYUDA_OTROS, extra: null,
+    carpeta: 'Otros', archivo: 'Cash otros ingresos',
+  },
 ];
 
-// Opciones del campo 13 cuando el movimiento es una salida de efectivo.
-const JUSTIFICANTE_FACTURA = 'Factura / ticket de gasto a nombre de Sanchoyjote SL';
-const JUSTIFICANTE_OTROS = 'Proforma, albarán, imagen del cash, sin justificante, otros';
-// Lo que se guarda en la columna cuando el movimiento es un ingreso.
-const JUSTIFICANTE_INGRESO = 'Imagen de cash';
+CONCEPTOS[SALIDA] = [
+  {
+    nombre: 'Gastos operativos / Servicios', matricula: null, detalle: 'obligatorio',
+    detalleAyuda: '', extra: null, archivo: 'Cash Gasto operativo',
+    permiteFactura: true, carpetaConFactura: 'Gastos con factura', carpetaSinFactura: 'Gastos sin factura',
+  },
+  {
+    nombre: 'Compra de moto', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null, archivo: 'Cash compra moto',
+    permiteFactura: true, carpetaConFactura: 'Gastos con factura', carpetaSinFactura: 'Gastos sin factura',
+  },
+  {
+    nombre: 'Devolución a cliente - reserva', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null,
+    carpeta: 'Otros', archivo: 'Cash devolución de reserva cliente',
+  },
+  {
+    nombre: 'Devolución a cliente - venta cancelada', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null,
+    carpeta: 'Otros', archivo: 'Cash devolución de venta cliente',
+  },
+  {
+    nombre: 'Devolución a cliente - pago en exceso', matricula: 'obligatorio', detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null,
+    carpeta: 'Otros', archivo: 'Cash devolución pago en exceso cliente',
+  },
+  {
+    nombre: 'Envío de cash a otra sede', matricula: null, detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: 'sedeDestino',
+    carpeta: 'Otros', archivo: 'Cash envío a sede',
+  },
+  {
+    nombre: 'Ajuste contable de caja', matricula: null, detalle: 'obligatorio',
+    detalleAyuda: AYUDA_AJUSTE, extra: null,
+    carpeta: 'Otros', archivo: 'Cash ajuste contable caja salida',
+  },
+  {
+    nombre: 'Pago al personal interno', matricula: null, detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: 'empleado',
+    carpeta: 'Otros', archivo: 'Cash pago a personal interno',
+  },
+  {
+    nombre: 'Otros', matricula: 'opcional', detalle: 'obligatorio',
+    detalleAyuda: AYUDA_OTROS, extra: null, archivo: 'Cash otras salidas',
+    permiteFactura: true, carpetaConFactura: 'Gastos con factura', carpetaSinFactura: 'Otros',
+  },
+];
 
 const HEADERS = [
   'Fecha registro',
@@ -66,6 +139,7 @@ const HEADERS = [
   'Matrícula',
   'Detalle',
   'Sede origen / destino',
+  'Código de envío',
   'Nombre de empleado',
   'Importe (EUR)',
   'Importe con signo',
@@ -77,6 +151,8 @@ const HEADERS = [
 function doGet() {
   const t = HtmlService.createTemplateFromFile('Index');
   t.config = JSON.stringify({
+    empresa: EMPRESA,
+    nif: NIF,
     sedes: SEDES,
     ingreso: INGRESO,
     salida: SALIDA,
@@ -98,10 +174,22 @@ function getConcepto_(tipoMovimiento, nombre) {
   return null;
 }
 
-function getOrCreateFolder_(parent, name) {
-  const it = parent.getFoldersByName(name);
+/**
+ * Busca la carpeta por nombre en todo el Drive al que tiene acceso quien
+ * despliega. Así, si las carpetas "Caja Barcelona", "Caja Madrid", etc. ya
+ * existen (o se crean después en una unidad compartida), el formulario las
+ * usa en vez de crear otras sueltas en la raíz.
+ */
+function getCarpetaRaiz_(nombre) {
+  const it = DriveApp.getFoldersByName(nombre);
   if (it.hasNext()) return it.next();
-  return parent.createFolder(name);
+  return DriveApp.createFolder(nombre);
+}
+
+function getSubCarpeta_(parent, nombre) {
+  const it = parent.getFoldersByName(nombre);
+  if (it.hasNext()) return it.next();
+  return parent.createFolder(nombre);
 }
 
 function getSheet_() {
@@ -123,15 +211,15 @@ function sanitize_(s) {
 }
 
 function nuevoId_(fechaRegistro) {
-  const stamp = Utilities.formatDate(fechaRegistro, Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss');
-  const sufijo = Utilities.getUuid().replace(/-/g, '').substring(0, 4).toUpperCase();
-  return 'MOV-' + stamp + '-' + sufijo;
+  const dia = Utilities.formatDate(fechaRegistro, Session.getScriptTimeZone(), 'yyyyMMdd');
+  const sufijo = Utilities.getUuid().replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
+  return 'MOV-' + dia + '-' + sufijo;
 }
 
 /**
  * data: {sede, responsable, tipoMovimiento, concepto, matricula, detalle,
- *        sedeContraparte, empleado, importe, fecha, tipoJustificante,
- *        photoBase64, photoMimeType}
+ *        sedeContraparte, codigoEnvio, empleado, importe, fecha,
+ *        tipoJustificante, photoBase64, photoMimeType}
  */
 function submitMovimiento(data) {
   data = data || {};
@@ -183,17 +271,28 @@ function submitMovimiento(data) {
     throw new Error('La imagen del justificante es obligatoria para un ingreso de efectivo.');
   }
 
+  // Tipo de justificante y subcarpeta de destino.
   let tipoJustificante;
+  let subCarpeta;
+  let conFactura = false;
+
   if (esIngreso) {
     tipoJustificante = JUSTIFICANTE_INGRESO;
-  } else {
+    subCarpeta = concepto.carpeta;
+  } else if (concepto.permiteFactura) {
     tipoJustificante = data.tipoJustificante;
     if (tipoJustificante !== JUSTIFICANTE_FACTURA && tipoJustificante !== JUSTIFICANTE_OTROS) {
       throw new Error('Falta indicar qué tipo de justificante se adjunta.');
     }
-    if (tipoJustificante === JUSTIFICANTE_FACTURA && !data.photoBase64) {
+    conFactura = tipoJustificante === JUSTIFICANTE_FACTURA;
+    if (conFactura && !data.photoBase64) {
       throw new Error('Para marcar "factura / ticket" hay que adjuntar la imagen.');
     }
+    subCarpeta = conFactura ? concepto.carpetaConFactura : concepto.carpetaSinFactura;
+  } else {
+    // Conceptos que nunca llevan factura a nombre de la empresa.
+    tipoJustificante = JUSTIFICANTE_OTROS;
+    subCarpeta = concepto.carpeta;
   }
 
   const ahora = new Date();
@@ -201,18 +300,25 @@ function submitMovimiento(data) {
 
   let fileUrl = '';
   if (data.photoBase64) {
-    const mes = String(data.fecha).substring(0, 7); // yyyy-MM
-    const root = getOrCreateFolder_(DriveApp.getRootFolder(), ROOT_FOLDER_NAME);
-    const folder = getOrCreateFolder_(getOrCreateFolder_(root, sanitize_(data.sede)), mes);
+    // Ruta: Caja <Sede> / Ingreso Caja | Salida Caja / <subcarpeta>
+    const raiz = getCarpetaRaiz_('Caja ' + sanitize_(data.sede));
+    const nivel = getSubCarpeta_(raiz, esIngreso ? 'Ingreso Caja' : 'Salida Caja');
+    const carpeta = getSubCarpeta_(nivel, subCarpeta);
 
-    const partes = [data.fecha, concepto.nombre];
+    const partes = [];
     if (data.matricula) partes.push(data.matricula);
-    partes.push(id);
-    const nombreArchivo = sanitize_(partes.join(' - ')) + '.jpg';
+    partes.push(concepto.archivo);
+    if (concepto.extra === 'sedeOrigen' || concepto.extra === 'sedeDestino') {
+      partes.push(data.sedeContraparte);
+    }
+    if (concepto.extra === 'empleado') partes.push(data.empleado);
+    if (concepto.permiteFactura) partes.push(conFactura ? 'con factura' : 'sin factura');
+    partes.push(Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd HH.mm'));
 
+    const nombreArchivo = sanitize_(partes.join(' - ')) + '.jpg';
     const decoded = Utilities.base64Decode(data.photoBase64);
     const blob = Utilities.newBlob(decoded, data.photoMimeType || 'image/jpeg', nombreArchivo);
-    fileUrl = folder.createFile(blob).getUrl();
+    fileUrl = carpeta.createFile(blob).getUrl();
   }
 
   const sheet = getSheet_();
@@ -226,6 +332,7 @@ function submitMovimiento(data) {
     data.matricula || '',
     data.detalle || '',
     data.sedeContraparte || '',
+    data.codigoEnvio || '',
     data.empleado || '',
     importe,
     esIngreso ? importe : -importe,
@@ -234,5 +341,10 @@ function submitMovimiento(data) {
     fileUrl,
   ]);
 
-  return { id: id, fileUrl: fileUrl };
+  return {
+    id: id,
+    fileUrl: fileUrl,
+    esEnvioEntreSedes: concepto.extra === 'sedeDestino',
+    sedeContraparte: data.sedeContraparte || '',
+  };
 }
