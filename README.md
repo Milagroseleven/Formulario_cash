@@ -8,6 +8,9 @@ justificante a Drive, en la carpeta que corresponde según el concepto.
 Está construido sobre Google Apps Script. Más adelante se migrará a la
 intranet, junto al formulario de TPV.
 
+**Enlace del formulario** (el que se comparte con las sedes):
+https://script.google.com/macros/s/AKfycbx5xatnl1HS94_mOePUwgEFXtiAJGWzNKfp2v-1iYhtoGaCs_g8-xEvAeIcZ27IQJxpzw/exec
+
 ## Archivos
 
 | Archivo | Qué es |
