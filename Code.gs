@@ -35,19 +35,19 @@
 // ---------------------------------------------------------------------
 const SEDES_CONFIG = {
   'Barcelona': {
-    carpetaId: '1iOV6tVk8k6AsTkP9hHnhogZcY6OtYHx8',
+    carpetaId: '1QBase7tlzK2KVQ4OXSoc39JQIzfXVnAn',
     hojaId: '1B6Qc9AWnndZ1ZvKG-nnJqthGbGtC01cdAYnN4HM7ndE',
   },
   'Madrid': {
-    carpetaId: '1WBhvJ79EK9VVX59RnK0OAde1lCdCOXqY',
+    carpetaId: '1WYnb4HayYYTKFtdCRKIViAEPhS8sl9pp',
     hojaId: '1jIEODAEg_dqvdVR7PX2-ZyX3Zkhj-2rtEwPh26cgtcs',
   },
   'Sevilla': {
-    carpetaId: '1GS9WudgqkOYklz4PN98Q6MsYrLmJzLWg',
+    carpetaId: '1TERHkX3G6G5QveoN-lixW3jPqnTPf6Mt',
     hojaId: '1hoHKdVb-XExvVg1weKQ899cmBhusqWXdxfsKViLLCYg',
   },
   'Valencia': {
-    carpetaId: '120bJqksHlFMlof0X_TvrFd2UiFfIFQd7',
+    carpetaId: '14O4ZFpmjw6XQszXggUdKPSIi3RPOuP38',
     hojaId: '1LzJkwlsRzv0xHotY0beeyQgLdn1K7PBWoMMir6ING68',
   },
 };
