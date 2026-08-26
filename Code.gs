@@ -73,6 +73,13 @@ const USUARIOS = {
 };
 
 const SHEET_NAME = 'Registro';
+const RESUMEN_NAME = 'Resumen';
+
+// Posición de las columnas de "Registro" que usan el orden y el resumen.
+const COL_TIPO = 5;            // E - Tipo de movimiento
+const COL_CONCEPTO = 6;        // F - Concepto
+const COL_IMPORTE_SIGNO = 13;  // M - Importe con signo
+const COL_FECHA_MOV = 14;      // N - Fecha del movimiento
 
 const EMPRESA = 'Sanchoyjote S.L.';
 const NIF = 'B72770191';
@@ -287,6 +294,25 @@ function getHojaRegistro_(spreadsheet) {
   return sheet;
 }
 
+/**
+ * Pasa 'yyyy-MM-dd' (lo que envía el campo de fecha) a una fecha de verdad.
+ * Guardarla como texto haría que el resumen no pudiera compararla con las
+ * fechas de corte, y que el orden fuera alfabético en vez de cronológico.
+ */
+function aFecha_(texto) {
+  const partes = String(texto).split('-');
+  if (partes.length !== 3) return texto;
+  return new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+}
+
+/** Deja las filas ordenadas de la fecha más antigua a la más reciente. */
+function ordenarPorFecha_(sheet) {
+  const ultima = sheet.getLastRow();
+  if (ultima < 3) return;
+  sheet.getRange(2, 1, ultima - 1, HEADERS.length)
+    .sort({ column: COL_FECHA_MOV, ascending: true });
+}
+
 function sanitize_(s) {
   return String(s || '').replace(/[\\/:*?"<>|]/g, '-').trim();
 }
@@ -416,7 +442,7 @@ function submitMovimiento(data) {
     data.empleado || '',
     importe,
     esIngreso ? importe : -importe,
-    data.fecha,
+    aFecha_(data.fecha),
     tipoJustificante,
     fileUrl,
   ];
@@ -431,11 +457,15 @@ function submitMovimiento(data) {
       throw new Error('No se pudo abrir la hoja configurada para ' + data.sede +
         '. Revisa el hojaId en SEDES_CONFIG.');
     }
-    getHojaRegistro_(libroSede).appendRow(fila);
+    const hojaSede = getHojaRegistro_(libroSede);
+    hojaSede.appendRow(fila);
+    ordenarPorFecha_(hojaSede);
   }
 
   // Hoja maestra: la que contiene todas las sedes.
-  getHojaRegistro_(SpreadsheetApp.getActiveSpreadsheet()).appendRow(fila);
+  const hojaMaestra = getHojaRegistro_(SpreadsheetApp.getActiveSpreadsheet());
+  hojaMaestra.appendRow(fila);
+  ordenarPorFecha_(hojaMaestra);
 
   return {
     id: id,
@@ -443,4 +473,159 @@ function submitMovimiento(data) {
     esEnvioEntreSedes: concepto.extra === 'sedeDestino',
     sedeContraparte: data.sedeContraparte || '',
   };
+}
+
+
+// ---------------------------------------------------------------------
+// PESTAÑA "RESUMEN"
+//
+// Un resumen por conceptos con dos fechas de corte. Está hecho con
+// fórmulas, no con valores: se actualiza solo según entran movimientos, y
+// basta con cambiar las fechas de arriba para ver otro periodo.
+//
+// Para crearlo (o rehacerlo) en la hoja maestra y en las cuatro hojas de
+// sede, ejecuta crearResumenes() desde el editor.
+// ---------------------------------------------------------------------
+
+/** Número de columna -> letra (1 -> A, 13 -> M). */
+function colLetra_(n) {
+  let letra = '';
+  while (n > 0) {
+    const resto = (n - 1) % 26;
+    letra = String.fromCharCode(65 + resto) + letra;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letra;
+}
+
+/**
+ * Convierte a fecha de verdad las que quedaron guardadas como texto por
+ * versiones anteriores del formulario. Sin esto, esas filas no entrarían en
+ * el resumen ni se ordenarían bien.
+ */
+function normalizarFechas_(sheet) {
+  const ultima = sheet.getLastRow();
+  if (ultima < 2) return;
+  const rango = sheet.getRange(2, COL_FECHA_MOV, ultima - 1, 1);
+  const valores = rango.getValues();
+  let cambios = false;
+  for (let i = 0; i < valores.length; i++) {
+    const v = valores[i][0];
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      valores[i][0] = aFecha_(v);
+      cambios = true;
+    }
+  }
+  if (cambios) rango.setValues(valores);
+  rango.setNumberFormat('dd/mm/yyyy');
+}
+
+function construirResumen_(ss) {
+  getHojaRegistro_(ss); // asegura que exista la pestaña Registro
+
+  let sheet = ss.getSheetByName(RESUMEN_NAME);
+  if (!sheet) sheet = ss.insertSheet(RESUMEN_NAME);
+
+  // Se conservan las fechas de corte que hubiera puestas.
+  const desdeAntes = sheet.getRange('C1').getValue();
+  const hastaAntes = sheet.getRange('C2').getValue();
+
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
+  sheet.clear();
+
+  const reg = "'" + SHEET_NAME + "'";
+  const colImporte = colLetra_(COL_IMPORTE_SIGNO);
+  const colTipo = colLetra_(COL_TIPO);
+  const colConcepto = colLetra_(COL_CONCEPTO);
+  const colFecha = colLetra_(COL_FECHA_MOV);
+  // Sin fecha de corte no se filtra por ese extremo.
+  const desde = 'IF($C$1="",DATE(1900,1,1),$C$1)';
+  const hasta = 'IF($C$2="",DATE(2200,1,1),$C$2)';
+
+  function formulaConcepto(tipo, fila) {
+    return '=SUMIFS(' + reg + '!$' + colImporte + ':$' + colImporte +
+      ',' + reg + '!$' + colTipo + ':$' + colTipo + ',"' + tipo + '"' +
+      ',' + reg + '!$' + colConcepto + ':$' + colConcepto + ',$B' + fila +
+      ',' + reg + '!$' + colFecha + ':$' + colFecha + ',">="&' + desde +
+      ',' + reg + '!$' + colFecha + ':$' + colFecha + ',"<="&' + hasta + ')';
+  }
+
+  const AZUL = '#dce6f1';
+  const AMARILLO = '#ffffcc';
+
+  // Fechas de corte.
+  sheet.getRange('B1').setValue('FECHA DE INICIO');
+  sheet.getRange('B2').setValue('FECHA DE FIN');
+  sheet.getRange('B1:B2').setFontWeight('bold').setHorizontalAlignment('right');
+  const corte = sheet.getRange('C1:C2');
+  corte.setBackground(AMARILLO).setNumberFormat('dd/mm/yyyy')
+    .setBorder(true, true, true, true, false, true);
+  if (desdeAntes) sheet.getRange('C1').setValue(desdeAntes);
+  if (hastaAntes) sheet.getRange('C2').setValue(hastaAntes);
+
+  // Devuelve la fila del total.
+  function bloque(titulo, tipo, primeraFila) {
+    const lista = CONCEPTOS[tipo];
+    const nombres = lista.map(function(c) { return [c.nombre]; });
+    sheet.getRange(primeraFila, 2, lista.length, 1).setValues(nombres)
+      .setNumberFormat('"* "@');
+    for (let i = 0; i < lista.length; i++) {
+      sheet.getRange(primeraFila + i, 3)
+        .setFormula(formulaConcepto(tipo, primeraFila + i));
+    }
+    sheet.getRange(primeraFila, 1, lista.length, 1).merge()
+      .setValue(titulo)
+      .setFontWeight('bold')
+      .setBackground(AZUL)
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle')
+      .setWrap(true);
+
+    const filaTotal = primeraFila + lista.length;
+    sheet.getRange(filaTotal, 1, 1, 2).merge()
+      .setValue('TOTAL ' + (tipo === INGRESO ? 'INGRESOS' : 'SALIDAS'));
+    sheet.getRange(filaTotal, 3)
+      .setFormula('=SUM(C' + primeraFila + ':C' + (filaTotal - 1) + ')');
+    sheet.getRange(filaTotal, 1, 1, 3).setFontWeight('bold').setBackground(AZUL);
+    return filaTotal;
+  }
+
+  const totalIngresos = bloque('INGRESOS EFECTIVO', INGRESO, 4);
+  const totalSalidas = bloque('SALIDAS EFECTIVO', SALIDA, totalIngresos + 2);
+
+  const filaSaldo = totalSalidas + 2;
+  sheet.getRange(filaSaldo, 1, 1, 2).merge().setValue('SALDO');
+  sheet.getRange(filaSaldo, 3)
+    .setFormula('=C' + totalIngresos + '+C' + totalSalidas);
+  sheet.getRange(filaSaldo, 1, 1, 3).setFontWeight('bold').setBackground(AZUL);
+
+  sheet.getRange(4, 3, filaSaldo - 3, 1).setNumberFormat('#,##0.00');
+  sheet.getRange(1, 1, filaSaldo, 3)
+    .setBorder(true, true, true, true, true, true, '#9fb8d4', null);
+  sheet.setColumnWidth(1, 150);
+  sheet.setColumnWidth(2, 260);
+  sheet.setColumnWidth(3, 120);
+
+  return sheet;
+}
+
+function prepararLibro_(ss) {
+  const registro = getHojaRegistro_(ss);
+  normalizarFechas_(registro);
+  ordenarPorFecha_(registro);
+  construirResumen_(ss);
+}
+
+/**
+ * Crea o rehace la pestaña "Resumen" en la hoja maestra y en la de cada
+ * sede, y deja los registros ordenados por fecha. Se ejecuta a mano desde
+ * el editor cuando haga falta; el resumen en sí se actualiza solo.
+ */
+function crearResumenes() {
+  prepararLibro_(SpreadsheetApp.getActiveSpreadsheet());
+  SEDES.forEach(function(sede) {
+    const id = (SEDES_CONFIG[sede] || {}).hojaId;
+    if (!id) return;
+    prepararLibro_(SpreadsheetApp.openById(id));
+  });
 }

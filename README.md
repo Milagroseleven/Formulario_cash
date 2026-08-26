@@ -197,6 +197,26 @@ En los conceptos cuyo nombre de archivo no lleva "con o sin factura", el
 sufijo `- con factura` se añade igualmente cuando se marca esa opción, para
 que el archivo no acabe en `Gastos con factura` sin que el nombre lo diga.
 
+## Pestaña "Resumen"
+
+Cada hoja —la maestra y la de cada sede— tiene una segunda pestaña con el
+resumen por conceptos:
+
+- **Fecha de inicio** y **fecha de fin** en las dos celdas amarillas de
+  arriba. Si se dejan vacías, se cuenta todo el histórico.
+- Un bloque de **ingresos** y otro de **salidas**, con una línea por
+  concepto, sus totales y el **saldo** final.
+
+Está hecho con fórmulas (`SUMIFS`), no con valores copiados: se actualiza
+solo según entran movimientos, y basta con cambiar las fechas de corte para
+ver otro periodo. No hay que volver a ejecutar nada.
+
+Para crearlo la primera vez, o para rehacerlo si se añaden conceptos nuevos,
+se ejecuta **`crearResumenes`** desde el editor de Apps Script: seleccionar
+esa función en el desplegable de arriba y pulsar **Ejecutar**. Lo crea en la
+hoja maestra y en las cuatro de sede de una vez, y de paso ordena los
+registros y convierte a fecha las que hubieran quedado como texto.
+
 ## Columnas de las hojas
 
 Tanto la hoja maestra como la de cada sede tienen la pestaña **Registro** con
@@ -211,6 +231,9 @@ estas columnas:
 - **Importe (EUR)** siempre va en positivo. **Importe con signo** repite el
   valor en negativo cuando es una salida, para poder sumar la columna directo
   y obtener el saldo de caja.
+- **Fecha del movimiento** se guarda como fecha de verdad, no como texto, y
+  las filas quedan **ordenadas de la más antigua a la más reciente** después
+  de cada envío. Da igual el orden en que se registren.
 - **ID movimiento** (`MOV-20260824-A1B2`) se le muestra al usuario al
   terminar, con un botón para copiarlo. En un envío de cash a otra sede, el
   formulario le indica expresamente que lo copie y se lo envíe al responsable
