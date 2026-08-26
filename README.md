@@ -38,12 +38,12 @@ Todo esto se declara en `SEDES_CONFIG`, al principio de `Code.gs`:
 
 ```javascript
 const SEDES_CONFIG = {
-  'Barcelona': { carpetaId: '', hojaId: '' },
-  'Madrid':    { carpetaId: '', hojaId: '' },
-  'Sevilla':   { carpetaId: '', hojaId: '' },
-  'Valencia':  { carpetaId: '', hojaId: '' },
+  'Barcelona': { carpetaId: '1iOV6t…', hojaId: '1B6Qc9…' },
+  ...
 };
 ```
+
+Las cuatro sedes ya están configuradas con sus carpetas y hojas.
 
 - **`carpetaId`**: el ID de la carpeta de esa sede, esté donde esté (incluso
   en una unidad compartida). Si se deja vacío, el formulario busca una
@@ -58,6 +58,31 @@ El ID es el trozo largo de la dirección:
 drive.google.com/drive/folders/ESTO_ES_EL_ID
 docs.google.com/spreadsheets/d/ESTO_ES_EL_ID/edit
 ```
+
+### Sede habitual de cada cuenta
+
+`USUARIOS`, justo debajo, asocia correos con sedes:
+
+```javascript
+const USUARIOS = {
+  'diego.seminario@motickfamily.com': 'Madrid',
+  ...
+};
+```
+
+Sirve para dos cosas, y **ninguna de las dos restringe nada**:
+
+1. Al abrir el formulario, la sede viene ya elegida.
+2. Si se cambia a otra sede, aparece un aviso en amarillo: "Tu cuenta es de
+   la sede Valencia y estás registrando un movimiento en Madrid. Puedes
+   continuar, pero comprueba que sea correcto".
+
+Quien no esté en la lista abre el formulario con la sede sin elegir y no ve
+ningún aviso. Para dar de alta a alguien, basta con añadir su línea.
+
+Esto depende de que Google entregue el correo de quien abre la página, cosa
+que solo ocurre dentro del mismo dominio de Workspace. Como todas las cuentas
+son `@motickfamily.com`, funciona.
 
 Importante: el formulario se ejecuta **con la cuenta que lo despliega**, así
 que esa cuenta necesita permiso de edición sobre todas las carpetas y todas
@@ -192,12 +217,14 @@ estas columnas:
 ## Despliegue (una sola vez)
 
 1. Crea el Google Sheet **maestro** en blanco y nómbralo, por ejemplo,
-   "Movimientos de caja - todas las sedes".
-2. Crea la hoja de cada sede y la carpeta de cada sede, y comparte cada una
-   con su jefe. Anota los IDs.
+   "Movimientos de caja - todas las sedes". Compártelo solo con contabilidad
+   y dirección.
+2. Las carpetas y las hojas de cada sede ya están creadas y configuradas en
+   `Code.gs`. Solo hay que comprobar que cada una esté compartida con su jefe
+   y que la cuenta que despliega tenga permiso de edición sobre todas.
 3. Dentro del Sheet maestro: menú **Extensiones → Apps Script**.
 4. Borra el contenido del archivo `Código.gs` y pega el de `Code.gs`.
-   Rellena `SEDES_CONFIG` con los IDs del paso 2.
+   `SEDES_CONFIG` ya trae los IDs de las cuatro sedes.
 5. Botón **+** junto a "Archivos" → **HTML** → nómbralo exactamente `Index`
    (sin extensión) y pega el contenido de `Index.html`.
 6. Engranaje ⚙️ (Configuración del proyecto) → marca **"Mostrar archivo de

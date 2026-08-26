@@ -34,10 +34,42 @@
 // dirección.
 // ---------------------------------------------------------------------
 const SEDES_CONFIG = {
-  'Barcelona': { carpetaId: '', hojaId: '' },
-  'Madrid': { carpetaId: '', hojaId: '' },
-  'Sevilla': { carpetaId: '', hojaId: '' },
-  'Valencia': { carpetaId: '', hojaId: '' },
+  'Barcelona': {
+    carpetaId: '1iOV6tVk8k6AsTkP9hHnhogZcY6OtYHx8',
+    hojaId: '1B6Qc9AWnndZ1ZvKG-nnJqthGbGtC01cdAYnN4HM7ndE',
+  },
+  'Madrid': {
+    carpetaId: '1WBhvJ79EK9VVX59RnK0OAde1lCdCOXqY',
+    hojaId: '1jIEODAEg_dqvdVR7PX2-ZyX3Zkhj-2rtEwPh26cgtcs',
+  },
+  'Sevilla': {
+    carpetaId: '1GS9WudgqkOYklz4PN98Q6MsYrLmJzLWg',
+    hojaId: '1hoHKdVb-XExvVg1weKQ899cmBhusqWXdxfsKViLLCYg',
+  },
+  'Valencia': {
+    carpetaId: '14O4ZFpmjw6XQszXggUdKPSIi3RPOuP38',
+    hojaId: '1LzJkwlsRzv0xHotY0beeyQgLdn1K7PBWoMMir6ING68',
+  },
+};
+
+// ---------------------------------------------------------------------
+// SEDE HABITUAL DE CADA CUENTA
+//
+// Solo sirve para dos cosas: dejar la sede ya elegida al abrir el
+// formulario, y avisar si se registra un movimiento en otra sede. NO
+// restringe nada: cualquiera puede registrar en cualquier sede.
+//
+// Quien no esté en esta lista abre el formulario con la sede sin elegir y
+// no ve ningún aviso.
+// ---------------------------------------------------------------------
+const USUARIOS = {
+  'diego.seminario@motickfamily.com': 'Madrid',
+  'carlos@motickfamily.com': 'Madrid',
+  'gonzalo.peralta@motickfamily.com': 'Barcelona',
+  'josemanuel@motickfamily.com': 'Sevilla',
+  'motick.barcelona@motickfamily.com': 'Barcelona',
+  'nacho.carrion@motickfamily.com': 'Valencia',
+  'sergio.garcia@motickfamily.com': 'Madrid',
 };
 
 const SHEET_NAME = 'Registro';
@@ -177,8 +209,20 @@ const HEADERS = [
 ];
 
 function doGet() {
+  // Google solo entrega el correo de quien abre la página cuando está en el
+  // mismo dominio que la cuenta que despliega. Si no se puede, se sigue
+  // adelante sin sede sugerida.
+  let correo = '';
+  try {
+    correo = (Session.getActiveUser().getEmail() || '').toLowerCase();
+  } catch (err) {
+    correo = '';
+  }
+
   const t = HtmlService.createTemplateFromFile('Index');
   t.config = JSON.stringify({
+    correo: correo,
+    sedeHabitual: USUARIOS[correo] || '',
     empresa: EMPRESA,
     nif: NIF,
     sedes: SEDES,

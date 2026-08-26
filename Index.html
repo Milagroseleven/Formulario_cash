@@ -159,6 +159,16 @@
       border: 2px solid #2563eb;
       margin-top: 0;
     }
+    #avisoSede {
+      margin-top: 8px;
+      padding: 12px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      color: #92400e;
+      font-size: 13px;
+      line-height: 1.4;
+    }
     .aviso-envio {
       margin-top: 12px;
       padding: 12px;
@@ -184,6 +194,7 @@
       <select id="sede">
         <option value="" disabled selected>Selecciona...</option>
       </select>
+      <div id="avisoSede" class="oculto"></div>
 
       <!-- 2do campo -->
       <label class="req">Responsable</label>
@@ -304,6 +315,24 @@
     el('optFacturaTexto').textContent = CONFIG.justificanteFactura;
     el('optOtrosTexto').textContent = CONFIG.justificanteOtros;
 
+    // La sede de la cuenta viene ya elegida. No restringe nada: si registra
+    // en otra sede solo se avisa, por si fue un descuido.
+    var sedeSelect = el('sede');
+    if (CONFIG.sedeHabitual) sedeSelect.value = CONFIG.sedeHabitual;
+
+    function revisarSede() {
+      if (!CONFIG.sedeHabitual) return;
+      var actual = sedeSelect.value;
+      if (actual && actual !== CONFIG.sedeHabitual) {
+        el('avisoSede').textContent = '⚠️ Tu cuenta (' + CONFIG.correo + ') es de la sede ' +
+          CONFIG.sedeHabitual + ' y estás registrando un movimiento en ' + actual +
+          '. Puedes continuar, pero comprueba que sea correcto.';
+        mostrar('avisoSede', true);
+      } else {
+        mostrar('avisoSede', false);
+      }
+    }
+
     var fechaInput = el('fecha');
     var hoy = new Date().toISOString().slice(0, 10);
     fechaInput.value = hoy;
@@ -311,7 +340,7 @@
 
     // --- Utilidades -----------------------------------------------------
     function mostrar(wrapId, visible) {
-      el(wrapId).className = visible ? '' : 'oculto';
+      el(wrapId).classList.toggle('oculto', !visible);
     }
 
     function marcarObligatorio(labelId, obligatorio) {
@@ -412,9 +441,12 @@
       });
     }
 
-    el('sede').addEventListener('change', function() {
-      if (el('sedeContraparteWrap').className !== 'oculto') cargarSedesContraparte();
+    sedeSelect.addEventListener('change', function() {
+      revisarSede();
+      if (!el('sedeContraparteWrap').classList.contains('oculto')) cargarSedesContraparte();
     });
+
+    revisarSede();
 
     // --- 12vo y 13vo campos: imagen y tipo de justificante --------------
     var photoFile = null;
@@ -541,7 +573,6 @@
             result.sedeContraparte + ', para que lo indique al registrar el ingreso del dinero ' +
             'en su sede. Así los dos movimientos quedan emparejados.';
           mostrar('avisoEnvio', result.esEnvioEntreSedes);
-          el('avisoEnvio').classList.add('aviso-envio');
           el('formWrap').classList.add('hidden');
           el('successBox').style.display = 'block';
         })
