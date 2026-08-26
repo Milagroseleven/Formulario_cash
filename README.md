@@ -234,8 +234,9 @@ estas columnas:
 - **Fecha del movimiento** se guarda como fecha de verdad, no como texto, y
   las filas quedan **ordenadas de la más antigua a la más reciente** después
   de cada envío. Da igual el orden en que se registren.
-- **ID movimiento** (`MOV-20260824-A1B2`) se le muestra al usuario al
-  terminar, con un botón para copiarlo. En un envío de cash a otra sede, el
+- **ID movimiento** (`MOV-20260824-A1B2`) identifica cada fila. Solo se le
+  muestra al usuario, con un botón para copiarlo, cuando el movimiento es un
+  envío de cash a otra sede: en el resto de los casos no le sirve de nada. En un envío de cash a otra sede, el
   formulario le indica expresamente que lo copie y se lo envíe al responsable
   de la sede de destino; esa sede lo escribe en **Código del envío** al
   registrar su ingreso, y así las dos filas quedan emparejadas.
