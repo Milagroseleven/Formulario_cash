@@ -75,7 +75,7 @@ const USUARIOS = {
 const SHEET_NAME = 'Registro';
 const RESUMEN_NAME = 'Resumen';
 // Al subir este número, el resumen se rehace solo en el siguiente envío.
-const RESUMEN_VERSION = '2';
+const RESUMEN_VERSION = '3';
 
 // Posición de las columnas de "Registro" que usan el orden y el resumen.
 const COL_TIPO = 5;            // E - Tipo de movimiento
@@ -553,47 +553,30 @@ function construirResumen_(ss) {
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear();
 
-  const sep = separadorArgumentos_(sheet);
-  const reg = "'" + SHEET_NAME + "'";
-  const colImporte = colLetra_(COL_IMPORTE_SIGNO);
-  const colTipo = colLetra_(COL_TIPO);
-  const colConcepto = colLetra_(COL_CONCEPTO);
-  const colFecha = colLetra_(COL_FECHA_MOV);
-  // Sin fecha de corte no se filtra por ese extremo.
-  const desde = 'IF($C$1=""' + sep + 'DATE(1900' + sep + '1' + sep + '1)' + sep + '$C$1)';
-  const hasta = 'IF($C$2=""' + sep + 'DATE(2200' + sep + '1' + sep + '1)' + sep + '$C$2)';
-
-  function formulaConcepto(tipo, fila) {
-    return '=SUMIFS(' + reg + '!$' + colImporte + ':$' + colImporte +
-      sep + reg + '!$' + colTipo + ':$' + colTipo + sep + '"' + tipo + '"' +
-      sep + reg + '!$' + colConcepto + ':$' + colConcepto + sep + '$B' + fila +
-      sep + reg + '!$' + colFecha + ':$' + colFecha + sep + '">="&' + desde +
-      sep + reg + '!$' + colFecha + ':$' + colFecha + sep + '"<="&' + hasta + ')';
-  }
-
   const AZUL = '#dce6f1';
   const AMARILLO = '#ffffcc';
 
-  // Fechas de corte.
+  const listaIngresos = CONCEPTOS[INGRESO];
+  const listaSalidas = CONCEPTOS[SALIDA];
+  const primeraIngreso = 4;
+  const totalIngresos = primeraIngreso + listaIngresos.length;
+  const primeraSalida = totalIngresos + 2;
+  const totalSalidas = primeraSalida + listaSalidas.length;
+  const filaSaldo = totalSalidas + 2;
+
+  // --- Textos y formato ------------------------------------------------
   sheet.getRange('B1').setValue('FECHA DE INICIO');
   sheet.getRange('B2').setValue('FECHA DE FIN');
   sheet.getRange('B1:B2').setFontWeight('bold').setHorizontalAlignment('right');
-  const corte = sheet.getRange('C1:C2');
-  corte.setBackground(AMARILLO).setNumberFormat('dd/mm/yyyy')
+  sheet.getRange('C1:C2').setBackground(AMARILLO).setNumberFormat('dd/mm/yyyy')
     .setBorder(true, true, true, true, false, true);
   if (desdeAntes) sheet.getRange('C1').setValue(desdeAntes);
   if (hastaAntes) sheet.getRange('C2').setValue(hastaAntes);
 
-  // Devuelve la fila del total.
-  function bloque(titulo, tipo, primeraFila) {
-    const lista = CONCEPTOS[tipo];
+  function cabecera(titulo, lista, primeraFila, filaTotal, etiquetaTotal) {
     const nombres = lista.map(function(c) { return [c.nombre]; });
     sheet.getRange(primeraFila, 2, lista.length, 1).setValues(nombres)
       .setNumberFormat('"* "@');
-    for (let i = 0; i < lista.length; i++) {
-      sheet.getRange(primeraFila + i, 3)
-        .setFormula(formulaConcepto(tipo, primeraFila + i));
-    }
     sheet.getRange(primeraFila, 1, lista.length, 1).merge()
       .setValue(titulo)
       .setFontWeight('bold')
@@ -601,25 +584,61 @@ function construirResumen_(ss) {
       .setHorizontalAlignment('center')
       .setVerticalAlignment('middle')
       .setWrap(true);
-
-    const filaTotal = primeraFila + lista.length;
-    sheet.getRange(filaTotal, 1, 1, 2).merge()
-      .setValue('TOTAL ' + (tipo === INGRESO ? 'INGRESOS' : 'SALIDAS'));
-    sheet.getRange(filaTotal, 3)
-      .setFormula('=SUM(C' + primeraFila + ':C' + (filaTotal - 1) + ')');
+    sheet.getRange(filaTotal, 1, 1, 2).merge().setValue(etiquetaTotal);
     sheet.getRange(filaTotal, 1, 1, 3).setFontWeight('bold').setBackground(AZUL);
-    return filaTotal;
   }
 
-  const totalIngresos = bloque('INGRESOS EFECTIVO', INGRESO, 4);
-  const totalSalidas = bloque('SALIDAS EFECTIVO', SALIDA, totalIngresos + 2);
+  cabecera('INGRESOS EFECTIVO', listaIngresos, primeraIngreso, totalIngresos, 'TOTAL INGRESOS');
+  cabecera('SALIDAS EFECTIVO', listaSalidas, primeraSalida, totalSalidas, 'TOTAL SALIDAS');
 
-  const filaSaldo = totalSalidas + 2;
   sheet.getRange(filaSaldo, 1, 1, 2).merge().setValue('SALDO');
-  sheet.getRange(filaSaldo, 3)
-    .setFormula('=C' + totalIngresos + '+C' + totalSalidas);
   sheet.getRange(filaSaldo, 1, 1, 3).setFontWeight('bold').setBackground(AZUL);
 
+  // --- Fórmulas --------------------------------------------------------
+  const reg = "'" + SHEET_NAME + "'";
+  const colImporte = colLetra_(COL_IMPORTE_SIGNO);
+  const colTipo = colLetra_(COL_TIPO);
+  const colConcepto = colLetra_(COL_CONCEPTO);
+  const colFecha = colLetra_(COL_FECHA_MOV);
+
+  function escribirFormulas(sep) {
+    // Sin fecha de corte no se filtra por ese extremo.
+    const desde = 'IF($C$1=""' + sep + 'DATE(1900' + sep + '1' + sep + '1)' + sep + '$C$1)';
+    const hasta = 'IF($C$2=""' + sep + 'DATE(2200' + sep + '1' + sep + '1)' + sep + '$C$2)';
+
+    function bloque(tipo, lista, primeraFila, filaTotal) {
+      for (let i = 0; i < lista.length; i++) {
+        const fila = primeraFila + i;
+        sheet.getRange(fila, 3).setFormula(
+          '=SUMIFS(' + reg + '!$' + colImporte + ':$' + colImporte +
+          sep + reg + '!$' + colTipo + ':$' + colTipo + sep + '"' + tipo + '"' +
+          sep + reg + '!$' + colConcepto + ':$' + colConcepto + sep + '$B' + fila +
+          sep + reg + '!$' + colFecha + ':$' + colFecha + sep + '">="&' + desde +
+          sep + reg + '!$' + colFecha + ':$' + colFecha + sep + '"<="&' + hasta + ')');
+      }
+      sheet.getRange(filaTotal, 3)
+        .setFormula('=SUM(C' + primeraFila + ':C' + (filaTotal - 1) + ')');
+    }
+
+    bloque(INGRESO, listaIngresos, primeraIngreso, totalIngresos);
+    bloque(SALIDA, listaSalidas, primeraSalida, totalSalidas);
+    sheet.getRange(filaSaldo, 3)
+      .setFormula('=C' + totalIngresos + '+C' + totalSalidas);
+    SpreadsheetApp.flush();
+  }
+
+  // Según la configuración regional de la hoja, los argumentos se separan
+  // con coma o con punto y coma, y la que no toca da #ERROR!. En vez de
+  // deducirlo, se escribe, se mira si la hoja lo aceptó, y si no se
+  // reescribe con el otro.
+  let sep = separadorArgumentos_(sheet);
+  escribirFormulas(sep);
+  if (formulasConError_(sheet, primeraIngreso)) {
+    sep = (sep === ',') ? ';' : ',';
+    escribirFormulas(sep);
+  }
+
+  // --- Remate ----------------------------------------------------------
   sheet.getRange(4, 3, filaSaldo - 3, 1).setNumberFormat('#,##0.00');
   sheet.getRange(1, 1, filaSaldo, 3)
     .setBorder(true, true, true, true, true, true, '#9fb8d4', null);
@@ -628,6 +647,12 @@ function construirResumen_(ss) {
   sheet.setColumnWidth(3, 120);
 
   return sheet;
+}
+
+/** ¿La hoja rechazó la fórmula que acabamos de escribir? */
+function formulasConError_(sheet, fila) {
+  const valor = String(sheet.getRange(fila, 3).getDisplayValue());
+  return valor.indexOf('#ERROR') === 0 || valor.indexOf('#¡ERROR') === 0;
 }
 
 /**
