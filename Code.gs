@@ -74,6 +74,8 @@ const USUARIOS = {
 
 const SHEET_NAME = 'Registro';
 const RESUMEN_NAME = 'Resumen';
+// Al subir este número, el resumen se rehace solo en el siguiente envío.
+const RESUMEN_VERSION = '2';
 
 // Posición de las columnas de "Registro" que usan el orden y el resumen.
 const COL_TIPO = 5;            // E - Tipo de movimiento
@@ -523,6 +525,21 @@ function normalizarFechas_(sheet) {
   rango.setNumberFormat('dd/mm/yyyy');
 }
 
+/**
+ * Devuelve el separador de argumentos que entiende esta hoja: coma en
+ * configuración inglesa, punto y coma en española. Apps Script guarda la
+ * fórmula tal cual se le pasa, así que si no coincide sale #ERROR!. En vez
+ * de adivinarlo por el idioma, se prueba con una fórmula de una línea.
+ */
+function separadorArgumentos_(sheet) {
+  const celda = sheet.getRange(1, 20);
+  celda.setFormula('=SUM(1,2)');
+  SpreadsheetApp.flush();
+  const valor = celda.getValue();
+  celda.clear();
+  return valor === 3 ? ',' : ';';
+}
+
 function construirResumen_(ss) {
   getHojaRegistro_(ss); // asegura que exista la pestaña Registro
 
@@ -536,21 +553,22 @@ function construirResumen_(ss) {
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
   sheet.clear();
 
+  const sep = separadorArgumentos_(sheet);
   const reg = "'" + SHEET_NAME + "'";
   const colImporte = colLetra_(COL_IMPORTE_SIGNO);
   const colTipo = colLetra_(COL_TIPO);
   const colConcepto = colLetra_(COL_CONCEPTO);
   const colFecha = colLetra_(COL_FECHA_MOV);
   // Sin fecha de corte no se filtra por ese extremo.
-  const desde = 'IF($C$1="",DATE(1900,1,1),$C$1)';
-  const hasta = 'IF($C$2="",DATE(2200,1,1),$C$2)';
+  const desde = 'IF($C$1=""' + sep + 'DATE(1900' + sep + '1' + sep + '1)' + sep + '$C$1)';
+  const hasta = 'IF($C$2=""' + sep + 'DATE(2200' + sep + '1' + sep + '1)' + sep + '$C$2)';
 
   function formulaConcepto(tipo, fila) {
     return '=SUMIFS(' + reg + '!$' + colImporte + ':$' + colImporte +
-      ',' + reg + '!$' + colTipo + ':$' + colTipo + ',"' + tipo + '"' +
-      ',' + reg + '!$' + colConcepto + ':$' + colConcepto + ',$B' + fila +
-      ',' + reg + '!$' + colFecha + ':$' + colFecha + ',">="&' + desde +
-      ',' + reg + '!$' + colFecha + ':$' + colFecha + ',"<="&' + hasta + ')';
+      sep + reg + '!$' + colTipo + ':$' + colTipo + sep + '"' + tipo + '"' +
+      sep + reg + '!$' + colConcepto + ':$' + colConcepto + sep + '$B' + fila +
+      sep + reg + '!$' + colFecha + ':$' + colFecha + sep + '">="&' + desde +
+      sep + reg + '!$' + colFecha + ':$' + colFecha + sep + '"<="&' + hasta + ')';
   }
 
   const AZUL = '#dce6f1';
@@ -618,9 +636,14 @@ function construirResumen_(ss) {
  * solo, sin tener que ejecutar nada a mano desde el editor.
  */
 function asegurarResumen_(ss) {
-  if (ss.getSheetByName(RESUMEN_NAME)) return;
+  const props = PropertiesService.getScriptProperties();
+  const clave = 'resumen_' + ss.getId();
+  if (ss.getSheetByName(RESUMEN_NAME) && props.getProperty(clave) === RESUMEN_VERSION) {
+    return;
+  }
   normalizarFechas_(getHojaRegistro_(ss));
   construirResumen_(ss);
+  props.setProperty(clave, RESUMEN_VERSION);
 }
 
 function prepararLibro_(ss) {
