@@ -75,7 +75,7 @@ const USUARIOS = {
 const SHEET_NAME = 'Registro';
 const RESUMEN_NAME = 'Resumen';
 // Al subir este número, el resumen se rehace solo en el siguiente envío.
-const RESUMEN_VERSION = '4';
+const RESUMEN_VERSION = '5';
 
 // Filas fijas de la pestaña "Resumen": fechas de corte y la nota que
 // explica qué pasa si se dejan en blanco. El título va en la fila 1.
@@ -86,8 +86,11 @@ const FILA_NOTA = 4;
 // Posición de las columnas de "Registro" que usan el orden y el resumen.
 const COL_TIPO = 5;            // E - Tipo de movimiento
 const COL_CONCEPTO = 6;        // F - Concepto
+const COL_IMPORTE = 12;        // L - Importe (EUR)
 const COL_IMPORTE_SIGNO = 13;  // M - Importe con signo
 const COL_FECHA_MOV = 14;      // N - Fecha del movimiento
+
+const FORMATO_EUROS = '#,##0.00\u00a0€';
 
 const EMPRESA = 'Sanchoyjote S.L.';
 const NIF = 'B72770191';
@@ -288,6 +291,12 @@ function getSubCarpeta_(parent, nombre) {
   return parent.createFolder(nombre);
 }
 
+/** Deja en euros las dos columnas de importe, incluidas las filas futuras. */
+function formatoImportes_(sheet) {
+  sheet.getRange(2, COL_IMPORTE, sheet.getMaxRows() - 1, 2)
+    .setNumberFormat(FORMATO_EUROS);
+}
+
 /** Devuelve la pestaña "Registro" del libro, creándola con cabeceras. */
 function getHojaRegistro_(spreadsheet) {
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
@@ -298,6 +307,7 @@ function getHojaRegistro_(spreadsheet) {
     sheet.appendRow(HEADERS);
     sheet.setFrozenRows(1);
     sheet.autoResizeColumns(1, HEADERS.length);
+    formatoImportes_(sheet);
   }
   return sheet;
 }
@@ -705,7 +715,7 @@ function construirResumen_(ss) {
 
   // --- Remate ----------------------------------------------------------
   sheet.getRange(primeraIngreso, 3, filaSaldo - primeraIngreso + 1, 1)
-    .setNumberFormat('#,##0.00')
+    .setNumberFormat(FORMATO_EUROS)
     .setHorizontalAlignment('right');
   sheet.setColumnWidth(1, 150);
   sheet.setColumnWidth(2, 260);
@@ -734,6 +744,7 @@ function asegurarResumen_(ss) {
   const registro = getHojaRegistro_(ss);
   normalizarFechas_(registro);
   ordenarPorFecha_(registro);
+  formatoImportes_(registro);
   construirResumen_(ss);
   props.setProperty(clave, RESUMEN_VERSION);
 }
@@ -742,6 +753,7 @@ function prepararLibro_(ss) {
   const registro = getHojaRegistro_(ss);
   normalizarFechas_(registro);
   ordenarPorFecha_(registro);
+  formatoImportes_(registro);
   construirResumen_(ss);
 }
 

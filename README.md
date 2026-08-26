@@ -228,6 +228,8 @@ estas columnas:
 `Importe (EUR)` · `Importe con signo` · `Fecha del movimiento` ·
 `Tipo de justificante` · `Justificante (Drive)`
 
+- Las dos columnas de importe se muestran en euros con dos decimales
+  (`1.234,56 €`), igual que las cifras del resumen.
 - **Importe (EUR)** siempre va en positivo. **Importe con signo** repite el
   valor en negativo cuando es una salida, para poder sumar la columna directo
   y obtener el saldo de caja.
