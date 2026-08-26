@@ -75,7 +75,13 @@ const USUARIOS = {
 const SHEET_NAME = 'Registro';
 const RESUMEN_NAME = 'Resumen';
 // Al subir este número, el resumen se rehace solo en el siguiente envío.
-const RESUMEN_VERSION = '3';
+const RESUMEN_VERSION = '4';
+
+// Filas fijas de la pestaña "Resumen": fechas de corte y la nota que
+// explica qué pasa si se dejan en blanco. El título va en la fila 1.
+const FILA_DESDE = 2;
+const FILA_HASTA = 3;
+const FILA_NOTA = 4;
 
 // Posición de las columnas de "Registro" que usan el orden y el resumen.
 const COL_TIPO = 5;            // E - Tipo de movimiento
@@ -547,52 +553,109 @@ function construirResumen_(ss) {
   if (!sheet) sheet = ss.insertSheet(RESUMEN_NAME);
 
   // Se conservan las fechas de corte que hubiera puestas.
-  const desdeAntes = sheet.getRange('C1').getValue();
-  const hastaAntes = sheet.getRange('C2').getValue();
+  const desdeAntes = sheet.getRange(FILA_DESDE, 3).getValue();
+  const hastaAntes = sheet.getRange(FILA_HASTA, 3).getValue();
 
-  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
+  const todo = sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns());
+  todo.breakApart();
+  todo.clearDataValidations();
   sheet.clear();
+  sheet.clearNotes();
+  sheet.setHiddenGridlines(true);
 
-  const AZUL = '#dce6f1';
+  const AZUL_CLARO = '#c5d9f1';
+  const AZUL_FUERTE = '#4f81bd';
+  const AZUL_TEXTO = '#1f3864';
+  const BORDE = '#4f81bd';
   const AMARILLO = '#ffffcc';
+  const SOLIDA = SpreadsheetApp.BorderStyle.SOLID;
 
   const listaIngresos = CONCEPTOS[INGRESO];
   const listaSalidas = CONCEPTOS[SALIDA];
-  const primeraIngreso = 4;
+  const primeraIngreso = FILA_NOTA + 2;
   const totalIngresos = primeraIngreso + listaIngresos.length;
   const primeraSalida = totalIngresos + 2;
   const totalSalidas = primeraSalida + listaSalidas.length;
   const filaSaldo = totalSalidas + 2;
 
-  // --- Textos y formato ------------------------------------------------
-  sheet.getRange('B1').setValue('FECHA DE INICIO');
-  sheet.getRange('B2').setValue('FECHA DE FIN');
-  sheet.getRange('B1:B2').setFontWeight('bold').setHorizontalAlignment('right');
-  sheet.getRange('C1:C2').setBackground(AMARILLO).setNumberFormat('dd/mm/yyyy')
-    .setBorder(true, true, true, true, false, true);
-  if (desdeAntes) sheet.getRange('C1').setValue(desdeAntes);
-  if (hastaAntes) sheet.getRange('C2').setValue(hastaAntes);
+  // --- Título ----------------------------------------------------------
+  sheet.getRange(1, 1, 1, 2).merge()
+    .setValue('RESUMEN CAJA')
+    .setFontWeight('bold')
+    .setFontSize(12)
+    .setFontColor(AZUL_TEXTO)
+    .setBackground(AZUL_CLARO)
+    .setHorizontalAlignment('left')
+    .setBorder(true, true, true, true, false, false, BORDE, SOLIDA);
 
+  // --- Fechas de corte -------------------------------------------------
+  sheet.getRange(FILA_DESDE, 2).setValue('FECHA DE INICIO');
+  sheet.getRange(FILA_HASTA, 2).setValue('FECHA DE FIN');
+  sheet.getRange(FILA_DESDE, 2, 2, 1)
+    .setFontWeight('bold').setFontColor(AZUL_TEXTO).setHorizontalAlignment('right');
+
+  sheet.getRange(FILA_DESDE, 3, 2, 1)
+    .setBackground(AMARILLO)
+    .setNumberFormat('dd/mm/yyyy')
+    .setHorizontalAlignment('center')
+    .setBorder(true, true, true, true, true, true, BORDE, SOLIDA)
+    .setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireDate()
+      .setAllowInvalid(true)
+      .setHelpText('Escribe una fecha (dd/mm/aaaa). Déjala en blanco para no limitar por este lado.')
+      .build());
+  sheet.getRange(FILA_DESDE, 3)
+    .setNote('Desde qué fecha se cuentan los movimientos.\nEn blanco: desde el primero registrado.');
+  sheet.getRange(FILA_HASTA, 3)
+    .setNote('Hasta qué fecha se cuentan los movimientos.\nEn blanco: hasta el último registrado.');
+  if (desdeAntes) sheet.getRange(FILA_DESDE, 3).setValue(desdeAntes);
+  if (hastaAntes) sheet.getRange(FILA_HASTA, 3).setValue(hastaAntes);
+
+  sheet.getRange(FILA_NOTA, 1, 1, 3).merge()
+    .setValue('Escribe las fechas de corte en las celdas amarillas. Si dejas en blanco la ' +
+      'de inicio, se cuenta desde el primer movimiento; si dejas en blanco la de fin, ' +
+      'hasta el último. En blanco las dos, se cuenta todo el histórico.')
+    .setFontSize(9)
+    .setFontStyle('italic')
+    .setFontColor('#666666')
+    .setWrap(true)
+    .setVerticalAlignment('middle');
+  sheet.setRowHeight(FILA_NOTA, 34);
+
+  // --- Bloques ---------------------------------------------------------
   function cabecera(titulo, lista, primeraFila, filaTotal, etiquetaTotal) {
-    const nombres = lista.map(function(c) { return [c.nombre]; });
-    sheet.getRange(primeraFila, 2, lista.length, 1).setValues(nombres)
-      .setNumberFormat('"* "@');
+    sheet.getRange(primeraFila, 2, lista.length, 1)
+      .setValues(lista.map(function(c) { return [c.nombre]; }))
+      .setNumberFormat('"* "@')
+      .setFontColor(AZUL_TEXTO);
     sheet.getRange(primeraFila, 1, lista.length, 1).merge()
       .setValue(titulo)
       .setFontWeight('bold')
-      .setBackground(AZUL)
+      .setFontColor(AZUL_TEXTO)
+      .setBackground(AZUL_CLARO)
       .setHorizontalAlignment('center')
       .setVerticalAlignment('middle')
       .setWrap(true);
+    sheet.getRange(primeraFila, 1, lista.length, 3)
+      .setBorder(true, true, true, true, true, true, BORDE, SOLIDA);
+
     sheet.getRange(filaTotal, 1, 1, 2).merge().setValue(etiquetaTotal);
-    sheet.getRange(filaTotal, 1, 1, 3).setFontWeight('bold').setBackground(AZUL);
+    sheet.getRange(filaTotal, 1, 1, 3)
+      .setFontWeight('bold')
+      .setFontColor('#ffffff')
+      .setBackground(AZUL_FUERTE)
+      .setBorder(true, true, true, true, true, true, BORDE, SOLIDA);
   }
 
   cabecera('INGRESOS EFECTIVO', listaIngresos, primeraIngreso, totalIngresos, 'TOTAL INGRESOS');
   cabecera('SALIDAS EFECTIVO', listaSalidas, primeraSalida, totalSalidas, 'TOTAL SALIDAS');
 
   sheet.getRange(filaSaldo, 1, 1, 2).merge().setValue('SALDO');
-  sheet.getRange(filaSaldo, 1, 1, 3).setFontWeight('bold').setBackground(AZUL);
+  sheet.getRange(filaSaldo, 1, 1, 3)
+    .setFontWeight('bold')
+    .setFontColor('#ffffff')
+    .setBackground(AZUL_FUERTE)
+    .setBorder(true, true, true, true, true, true, BORDE, SOLIDA);
 
   // --- Fórmulas --------------------------------------------------------
   const reg = "'" + SHEET_NAME + "'";
@@ -600,11 +663,13 @@ function construirResumen_(ss) {
   const colTipo = colLetra_(COL_TIPO);
   const colConcepto = colLetra_(COL_CONCEPTO);
   const colFecha = colLetra_(COL_FECHA_MOV);
+  const celdaDesde = '$C$' + FILA_DESDE;
+  const celdaHasta = '$C$' + FILA_HASTA;
 
   function escribirFormulas(sep) {
     // Sin fecha de corte no se filtra por ese extremo.
-    const desde = 'IF($C$1=""' + sep + 'DATE(1900' + sep + '1' + sep + '1)' + sep + '$C$1)';
-    const hasta = 'IF($C$2=""' + sep + 'DATE(2200' + sep + '1' + sep + '1)' + sep + '$C$2)';
+    const desde = 'IF(' + celdaDesde + '=""' + sep + 'DATE(1900' + sep + '1' + sep + '1)' + sep + celdaDesde + ')';
+    const hasta = 'IF(' + celdaHasta + '=""' + sep + 'DATE(2200' + sep + '1' + sep + '1)' + sep + celdaHasta + ')';
 
     function bloque(tipo, lista, primeraFila, filaTotal) {
       for (let i = 0; i < lista.length; i++) {
@@ -639,9 +704,9 @@ function construirResumen_(ss) {
   }
 
   // --- Remate ----------------------------------------------------------
-  sheet.getRange(4, 3, filaSaldo - 3, 1).setNumberFormat('#,##0.00');
-  sheet.getRange(1, 1, filaSaldo, 3)
-    .setBorder(true, true, true, true, true, true, '#9fb8d4', null);
+  sheet.getRange(primeraIngreso, 3, filaSaldo - primeraIngreso + 1, 1)
+    .setNumberFormat('#,##0.00')
+    .setHorizontalAlignment('right');
   sheet.setColumnWidth(1, 150);
   sheet.setColumnWidth(2, 260);
   sheet.setColumnWidth(3, 120);
@@ -666,7 +731,9 @@ function asegurarResumen_(ss) {
   if (ss.getSheetByName(RESUMEN_NAME) && props.getProperty(clave) === RESUMEN_VERSION) {
     return;
   }
-  normalizarFechas_(getHojaRegistro_(ss));
+  const registro = getHojaRegistro_(ss);
+  normalizarFechas_(registro);
+  ordenarPorFecha_(registro);
   construirResumen_(ss);
   props.setProperty(clave, RESUMEN_VERSION);
 }
