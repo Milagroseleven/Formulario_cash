@@ -460,12 +460,15 @@ function submitMovimiento(data) {
     const hojaSede = getHojaRegistro_(libroSede);
     hojaSede.appendRow(fila);
     ordenarPorFecha_(hojaSede);
+    asegurarResumen_(libroSede);
   }
 
   // Hoja maestra: la que contiene todas las sedes.
-  const hojaMaestra = getHojaRegistro_(SpreadsheetApp.getActiveSpreadsheet());
+  const maestra = SpreadsheetApp.getActiveSpreadsheet();
+  const hojaMaestra = getHojaRegistro_(maestra);
   hojaMaestra.appendRow(fila);
   ordenarPorFecha_(hojaMaestra);
+  asegurarResumen_(maestra);
 
   return {
     id: id,
@@ -607,6 +610,17 @@ function construirResumen_(ss) {
   sheet.setColumnWidth(3, 120);
 
   return sheet;
+}
+
+/**
+ * Crea la pestaña "Resumen" si ese libro todavía no la tiene. Se llama en
+ * cada envío, pero solo hace trabajo la primera vez: así el resumen aparece
+ * solo, sin tener que ejecutar nada a mano desde el editor.
+ */
+function asegurarResumen_(ss) {
+  if (ss.getSheetByName(RESUMEN_NAME)) return;
+  normalizarFechas_(getHojaRegistro_(ss));
+  construirResumen_(ss);
 }
 
 function prepararLibro_(ss) {
