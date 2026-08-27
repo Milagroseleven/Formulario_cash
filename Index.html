@@ -85,6 +85,8 @@
     .opt.selected { border-color: #2563eb; background: #eff6ff; }
     .opt.disabled { opacity: 0.5; cursor: not-allowed; }
     .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    #imagenAyuda { margin-bottom: 10px; line-height: 1.45; }
+    #sinDocWrap { margin-top: 12px; }
     .oculto { display: none; }
     button#submitBtn {
       width: 100%;
@@ -266,7 +268,7 @@
 
       <label class="opt oculto" id="sinDocWrap">
         <input type="checkbox" id="sinDoc">
-        <span>No cuento con documentación para esta salida</span>
+        <span>No se cuenta con documentación para esta salida</span>
       </label>
 
       <!-- 13vo campo -->
@@ -279,8 +281,6 @@
           <input type="radio" name="justificante" id="optOtros"><span>No</span>
         </label>
       </div>
-
-      <div class="hint oculto" id="notaPrioridad">Prioriza siempre la factura o comprobante de pago. Si no dispones de ellos, adjunta igualmente cualquier documentación o evidencia disponible (proforma, albarán u otro soporte).</div>
 
       <div id="errorBox"></div>
 
@@ -513,13 +513,16 @@
       el('imagenLabel').textContent = esSalida
         ? 'Documentación de la salida'
         : 'Foto del efectivo recibido';
-      el('imagenAyuda').textContent = esSalida
-        ? 'Adjunta toda la documentación o evidencia disponible relacionada con esta salida.'
+      // El texto de la salida se mantiene visible aunque marque que no tiene
+      // documentación: es justo cuando más conviene que lo lea.
+      el('imagenAyuda').innerHTML = esSalida
+        ? '<em>Prioriza siempre la factura o comprobante de pago.</em> Si no dispones de ' +
+          'ellos, adjunta igualmente cualquier evidencia disponible (proforma, albarán, ' +
+          'recibo, captura u otro soporte).'
         : 'Adjunta una foto del efectivo correspondiente a este ingreso.';
       marcarObligatorio('imagenLabel', esIngreso);
 
       mostrar('sinDocWrap', esSalida);
-      mostrar('notaPrioridad', esSalida);
       mostrar('adjuntoWrap', !(esSalida && sinDoc));
       mostrar('justificanteWrap', esSalida && !sinDoc && !!photoDataUrl);
 

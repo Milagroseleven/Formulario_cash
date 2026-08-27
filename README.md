@@ -157,14 +157,16 @@ caminos, y uno de los dos es obligatorio:
    opciones **Sí** y **No**. La respuesta decide en qué carpeta de Drive se
    archiva. Al adjuntar se limpia cualquier respuesta anterior, para que
    elija a conciencia.
-2. **Marcar "No cuento con documentación para esta salida".** Se guarda como
+2. **Marcar "No se cuenta con documentación para esta salida".** Se guarda como
    "Sin documentación" y no se sube ningún archivo. Marcarlo descarta lo que
    se hubiera adjuntado antes, y adjuntar algo desmarca la casilla: las dos
    opciones son excluyentes.
 
-Debajo queda siempre la nota: *"Prioriza siempre la factura o comprobante de
-pago. Si no dispones de ellos, adjunta igualmente cualquier documentación o
-evidencia disponible (proforma, albarán u otro soporte)."*
+Justo debajo de la etiqueta, y visible en todo momento —incluso cuando se
+marca que no hay documentación, que es cuando más conviene leerlo—: *"Prioriza
+siempre la factura o comprobante de pago. Si no dispones de ellos, adjunta
+igualmente cualquier evidencia disponible (proforma, albarán, recibo, captura
+u otro soporte)."*
 
 Los valores que se guardan en la columna **Tipo de justificante** son:
 `Imagen de cash`, `Factura a nombre de Sanchoyjote S.L. - NIF B72770191`,
