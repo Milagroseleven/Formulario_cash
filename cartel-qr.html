@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Registro de movimientos de caja - QR</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1f3864;
+    margin: 0;
+    padding: 24px;
+    text-align: center;
+  }
+  .marco {
+    border: 3px solid #4f81bd;
+    border-radius: 16px;
+    padding: 32px 28px 26px;
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  .sede { font-size: 17px; color: #4f81bd; margin: 0 0 22px; font-weight: 600; }
+  img { width: 300px; height: 300px; display: block; margin: 0 auto 18px; }
+  .instruccion { font-size: 17px; margin: 0 0 22px; line-height: 1.5; }
+  .pasos {
+    text-align: left;
+    display: inline-block;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.7;
+    margin: 0;
+    padding-left: 20px;
+  }
+  .pie {
+    margin-top: 24px;
+    font-size: 11px;
+    color: #888;
+    word-break: break-all;
+  }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <div class="marco">
+    <h1>Registro de movimientos de caja</h1>
+    <p class="sede">Sanchoyjote S.L.</p>
+
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAnwAAAJ8AQMAAABeI+4VAAAABlBMVEUfOGT///9yTLyAAAADrklEQVR42u2dS27jQAxEibmA7n/LvkFPMpbZrGoNkIWBJoInGIFtSW9jVPinYn72GAEQIECAAAECBAgQIECAAAH+GmDkcc3X6+vU6+999rovy4u/31xy4z/gn/jwARAgwB8dt5avWd/c34+3ur8+jqXf+++I/Ua0DBDgcS2nUU4Vv0zzMsHXFF2PeLqRHwUgwC5aNtOcPrZY5PFWOloGCLCtliNSsDVAXnG0BddoGSDAlvFyetFpoC3xddvlp0AbLQMEeFjLZmp//io3omWAAI9ruR4SKWdxKktRb9/78V60DBBgBx972VlNgvn1qeUiauwyQICN4uXhFeTqP4tHXYS8El9oGSDADj526QyxPLbUl68p/WCxatBoGSDA81oepb+r9HStklOE2O7yUf8h8KMABHjUx37b4vSfq7Fendva62WJMrQMEGAHuyyvmuBSJ1wSX1sxGi0DBHjYLm957PSx15sR0pVdaljEywAB9vGx0yLvA4+i4mtWu5zVZ7QMEGAfLb8scsbOy3ne+kPW/FRIuhstAwR4XMu+eWBoBuxSyRMvAwTY1i6XuFjKxxG1daS61il/8tgAATbRck1TSx2qjipvQhaHHC0DBNjBLutg8spR6yRU7Gu+quFGywABtvGxV/vHnJap9gVBwwec0TJAgOd97Exi/8+XvnSKKvx6tAwQYCMfW+1vXeq1atDzYX5qVZnRMkCAneLlfetmjZfXNr8tvkbLAAGej5fLplzp6rwemkksuY2PDRBgI7tc5pFtYYgVlEMzZpou40cBCPCwXba+rwjfjG19X36KeBkgwCZajvCFnHU1Qc5ZzGkdYusytAwQYAMfu4p3X33/0DQyNFLGxwYIsIddtmqyd4OEfJROEurLAAG20bLvFRmy+EsumF6Jph8bIMBWPrZ3gJTxqDo2ZWv9JImNlgECbOBj1zWb9mypGkRLWXnqygK0DBDgcR/bxPu07MsWYq8rxVfnRwEI8HC8vLzr+mxWWzBSHHJfxotdBgiwT7ysSezHSQqZkUwzzfOXAQLs5GPbI5X3Oakl+dgqVvjYAAF2sMsRYmTV4KrlFVec+WWAANv52PYmz272tzaDyXMh0TJAgA207JHvnLYZO7b6VP0eLQME2E3L1mi9KlDTr4mQ6hVaBgiwl5Y3d1pS3FOeJ+WPl0LLAAH2iZdLKUpnk8NOhT2ABi0DBHhcy3ns+zZ12vFhfopdBAABttHyx44BECBAgAABAgQIECBAgAAB/gLgX3LHXNkJyy/9AAAAAElFTkSuQmCC" alt="Código QR del formulario">
+
+    <p class="instruccion"><b>Apunta con la cámara del móvil</b><br>
+    para registrar un ingreso o una salida de efectivo</p>
+
+    <ul class="pasos">
+      <li>Inicia sesión con tu cuenta <b>@motickfamily.com</b>.</li>
+      <li>La primera vez, guárdalo en la pantalla de inicio:<br>
+          menú del navegador → "Agregar a pantalla de inicio".</li>
+      <li>Los ingresos necesitan foto del efectivo.</li>
+      <li>En las salidas, adjunta la factura o comprobante siempre que exista.</li>
+    </ul>
+
+    <p class="pie">https://script.google.com/macros/s/AKfycbx5xatnl1HS94_mOePUwgEFXtiAJGWzNKfp2v-1iYhtoGaCs_g8-xEvAeIcZ27IQJxpzw/exec</p>
+  </div>
+</body>
+</html>

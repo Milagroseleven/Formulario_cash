@@ -11,6 +11,17 @@ intranet, junto al formulario de TPV.
 **Enlace del formulario** (el que se comparte con las sedes):
 https://script.google.com/macros/s/AKfycbx5xatnl1HS94_mOePUwgEFXtiAJGWzNKfp2v-1iYhtoGaCs_g8-xEvAeIcZ27IQJxpzw/exec
 
+## Código QR
+
+Para pegar en cada sede: [`cartel-qr.html`](cartel-qr.html) es una hoja A4
+lista para imprimir, con el QR y las instrucciones básicas. El QR suelto está
+en [`qr-formulario.png`](qr-formulario.png) (para WhatsApp o para meterlo en
+otro documento) y en [`qr-formulario.svg`](qr-formulario.svg) (vectorial, si
+hay que ampliarlo mucho sin que pierda calidad).
+
+Los tres apuntan al enlace de arriba. **Si algún día se crea una implementación
+nueva en vez de una versión nueva, el enlace cambia y hay que regenerarlos.**
+
 ## Archivos
 
 | Archivo | Qué es |
