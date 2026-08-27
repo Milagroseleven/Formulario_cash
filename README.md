@@ -144,9 +144,9 @@ imagen es obligatoria.
 
 ### Documentación (campos 12 y 13)
 
-**En un ingreso** el campo se llama "Imagen del justificante", la imagen es
-obligatoria y no hay nada que elegir: aparece la nota "Subir imagen de cash".
-En la hoja se guarda "Imagen de cash".
+**En un ingreso** el campo se llama "Foto del efectivo recibido", con el texto
+"Adjunta una foto del efectivo correspondiente a este ingreso". La foto es
+obligatoria y no hay nada que elegir. En la hoja se guarda "Imagen de cash".
 
 **En una salida** el campo se llama "Documentación de la salida" y se puede
 adjuntar tanto una foto como un archivo (por ejemplo un PDF). Hay dos
