@@ -47,19 +47,21 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 16px;
-      font-size: 16px;
+      gap: 6px;
+      flex: 1;
+      padding: 11px 8px;
+      font-size: 14px;
       font-weight: 600;
-      border: 2px dashed #2563eb;
-      border-radius: 10px;
+      border: 1px dashed #2563eb;
+      border-radius: 8px;
       background: #eff6ff;
       color: #2563eb;
       cursor: pointer;
+      text-align: center;
     }
-    .photo-btns { display: flex; flex-direction: column; gap: 10px; }
-    #fileInputCamera, #fileInputGallery { display: none; }
+    .photo-btns { display: flex; flex-direction: row; gap: 8px; }
+    #fileInputCamera, #fileInputArchivo { display: none; }
+    #archivoNombre { margin-top: 6px; word-break: break-all; }
     #preview { margin-top: 12px; display: none; text-align: center; }
     #preview img {
       max-width: 100%;
@@ -256,27 +258,38 @@
 
       <!-- 12vo campo -->
       <label id="imagenLabel">Imagen del justificante</label>
+      <div class="hint oculto" id="imagenAyuda">Adjunta toda la documentación o evidencia disponible relacionada con esta salida.</div>
       <div id="notaIngreso" class="nota oculto">📌 Subir imagen de cash</div>
-      <div class="photo-btns">
-        <div class="photo-btn" id="cameraBtn">📷 Hacer foto</div>
-        <div class="photo-btn" id="galleryBtn">🖼️ Elegir de la galería</div>
+      <div id="adjuntoWrap">
+        <div class="photo-btns">
+          <div class="photo-btn" id="cameraBtn">📷 Hacer foto</div>
+          <div class="photo-btn" id="archivoBtn">📎 Cargar archivo</div>
+        </div>
+        <input type="file" id="fileInputCamera" accept="image/*" capture="environment">
+        <input type="file" id="fileInputArchivo">
+        <div id="preview">
+          <img id="previewImg">
+          <div class="hint" id="archivoNombre"></div>
+        </div>
       </div>
-      <input type="file" id="fileInputCamera" accept="image/*" capture="environment">
-      <input type="file" id="fileInputGallery" accept="image/*">
-      <div id="preview"><img id="previewImg"></div>
+
+      <label class="opt oculto" id="sinDocWrap">
+        <input type="checkbox" id="sinDoc">
+        <span>No cuento con documentación para esta salida</span>
+      </label>
 
       <!-- 13vo campo -->
       <div id="justificanteWrap" class="oculto">
-        <label class="req">El justificante adjunto es:</label>
+        <label class="req" id="justificantePregunta"></label>
         <label class="opt" id="optFacturaWrap">
-          <input type="radio" name="justificante" id="optFactura">
-          <span id="optFacturaTexto"></span>
+          <input type="radio" name="justificante" id="optFactura"><span>Sí</span>
         </label>
         <label class="opt" id="optOtrosWrap">
-          <input type="radio" name="justificante" id="optOtros">
-          <span id="optOtrosTexto"></span>
+          <input type="radio" name="justificante" id="optOtros"><span>No</span>
         </label>
       </div>
+
+      <div class="hint oculto" id="notaPrioridad">Prioriza siempre la factura o comprobante de pago. Si no dispones de ellos, adjunta igualmente cualquier documentación o evidencia disponible (proforma, albarán u otro soporte).</div>
 
       <div id="errorBox"></div>
 
@@ -309,8 +322,8 @@
     [CONFIG.ingreso, CONFIG.salida].forEach(function(t) {
       el('tipoMovimiento').appendChild(new Option(t, t));
     });
-    el('optFacturaTexto').textContent = CONFIG.justificanteFactura;
-    el('optOtrosTexto').textContent = CONFIG.justificanteOtros;
+    el('justificantePregunta').textContent = '¿El documento adjunto es una factura emitida a nombre de ' +
+      CONFIG.empresa + ' (NIF: ' + CONFIG.nif + ')?';
 
     // La sede de la cuenta viene ya elegida. No restringe nada: si registra
     // en otra sede solo se avisa, por si fue un descuido.
@@ -450,19 +463,24 @@
     var photoDataUrl = null;
 
     el('cameraBtn').addEventListener('click', function() { el('fileInputCamera').click(); });
-    el('galleryBtn').addEventListener('click', function() { el('fileInputGallery').click(); });
+    el('archivoBtn').addEventListener('click', function() { el('fileInputArchivo').click(); });
 
     function onPhotoSelected(e) {
       var file = e.target.files[0];
       if (!file) return;
       photoFile = file;
+      var esImagen = /^image\//.test(file.type || '');
       var reader = new FileReader();
       reader.onload = function(ev) {
         photoDataUrl = ev.target.result;
-        el('previewImg').src = photoDataUrl;
+        // Un PDF no se puede previsualizar: se muestra el nombre.
+        el('previewImg').style.display = esImagen ? 'inline-block' : 'none';
+        if (esImagen) el('previewImg').src = photoDataUrl;
+        el('archivoNombre').textContent = file.name;
         el('preview').style.display = 'block';
-        // Al subir la imagen se libera la elección: con justificante ya
-        // pueden aplicar las dos opciones, así que tiene que elegir.
+        // Adjuntar algo descarta el "no tengo documentación", y libera la
+        // elección para que responda a conciencia si es factura o no.
+        el('sinDoc').checked = false;
         el('optFactura').checked = false;
         el('optOtros').checked = false;
         actualizarJustificante();
@@ -470,33 +488,49 @@
       reader.readAsDataURL(file);
     }
     el('fileInputCamera').addEventListener('change', onPhotoSelected);
-    el('fileInputGallery').addEventListener('change', onPhotoSelected);
+    el('fileInputArchivo').addEventListener('change', onPhotoSelected);
+
+    function limpiarAdjunto() {
+      photoFile = null;
+      photoDataUrl = null;
+      el('preview').style.display = 'none';
+      el('archivoNombre').textContent = '';
+      el('fileInputCamera').value = '';
+      el('fileInputArchivo').value = '';
+    }
+
+    el('sinDoc').addEventListener('change', function() {
+      if (el('sinDoc').checked) {
+        limpiarAdjunto();
+        el('optFactura').checked = false;
+        el('optOtros').checked = false;
+      }
+      el('sinDocWrap').classList.toggle('selected', el('sinDoc').checked);
+      actualizarJustificante();
+    });
 
     // En un ingreso la imagen es obligatoria y el 13vo campo es solo la
-    // nota "Subir imagen de cash". En una salida la imagen es opcional,
-    // pero hay que declarar qué se adjunta: sin imagen, la única opción
-    // posible es la segunda. Hay conceptos (devoluciones, envíos entre
-    // sedes, ajustes, pagos a personal) que nunca llevan factura a nombre
-    // de la empresa: ahí no se elige, se informa.
+    // nota "Subir imagen de cash". En una salida se pide documentación —o
+    // que declare que no la tiene— y solo si adjunta algo se le pregunta si
+    // es una factura a nombre de la empresa.
     function actualizarJustificante() {
       var tipo = el('tipoMovimiento').value;
       var esIngreso = tipo === CONFIG.ingreso;
       var esSalida = tipo === CONFIG.salida;
+      var sinDoc = el('sinDoc').checked;
 
+      el('imagenLabel').textContent = esSalida
+        ? 'Documentación de la salida'
+        : 'Imagen del justificante';
       marcarObligatorio('imagenLabel', esIngreso);
+
+      mostrar('imagenAyuda', esSalida);
       mostrar('notaIngreso', esIngreso);
+      mostrar('sinDocWrap', esSalida);
+      mostrar('notaPrioridad', esSalida);
+      mostrar('adjuntoWrap', !(esSalida && sinDoc));
+      mostrar('justificanteWrap', esSalida && !sinDoc && !!photoDataUrl);
 
-      mostrar('justificanteWrap', esSalida);
-
-      if (!esSalida) return;
-
-      var hayFoto = !!photoDataUrl;
-      el('optFactura').disabled = !hayFoto;
-      el('optFacturaWrap').classList.toggle('disabled', !hayFoto);
-      if (!hayFoto) {
-        el('optFactura').checked = false;
-        el('optOtros').checked = true;
-      }
       pintarSeleccion();
     }
 
@@ -551,13 +585,22 @@
 
       var tipoJustificante = '';
       if (!esIngreso) {
-        if (el('optFactura').checked) tipoJustificante = CONFIG.justificanteFactura;
-        else if (el('optOtros').checked) tipoJustificante = CONFIG.justificanteOtros;
-        if (!tipoJustificante) return showError('Falta indicar qué tipo de justificante se adjunta.');
+        if (el('sinDoc').checked) {
+          tipoJustificante = CONFIG.justificanteSin;
+        } else if (photoDataUrl) {
+          if (el('optFactura').checked) tipoJustificante = CONFIG.justificanteFactura;
+          else if (el('optOtros').checked) tipoJustificante = CONFIG.justificanteOtros;
+          if (!tipoJustificante) {
+            return showError('Indica si el documento adjunto es una factura a nombre de la empresa.');
+          }
+        } else {
+          return showError('Adjunta la documentación de la salida, o marca que no cuentas con ella.');
+        }
       }
 
       var base64 = photoDataUrl ? photoDataUrl.split(',')[1] : '';
       var mimeType = photoFile ? (photoFile.type || 'image/jpeg') : '';
+      var nombreArchivo = photoFile ? photoFile.name : '';
 
       var btn = el('submitBtn');
       btn.disabled = true;
@@ -594,6 +637,7 @@
           tipoJustificante: tipoJustificante,
           photoBase64: base64,
           photoMimeType: mimeType,
+          photoNombre: nombreArchivo,
         });
     });
 
@@ -633,11 +677,9 @@
     // Se mantienen sede y responsable: normalmente la misma persona carga
     // varios movimientos seguidos de la misma caja.
     el('newBtn').addEventListener('click', function() {
-      photoFile = null;
-      photoDataUrl = null;
-      el('preview').style.display = 'none';
-      el('fileInputCamera').value = '';
-      el('fileInputGallery').value = '';
+      limpiarAdjunto();
+      el('sinDoc').checked = false;
+      el('sinDocWrap').classList.remove('selected');
       el('tipoMovimiento').selectedIndex = 0;
       el('matricula').value = '';
       el('detalle').value = '';

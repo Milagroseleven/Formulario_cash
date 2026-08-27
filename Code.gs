@@ -104,9 +104,10 @@ const AYUDA_OPCIONAL = 'Opcional';
 const AYUDA_AJUSTE = 'Especificar ajuste contable de caja';
 const AYUDA_OTROS = 'Especificar "otros"';
 
-// Opciones del campo 13 en una salida de efectivo.
-const JUSTIFICANTE_FACTURA = 'Factura / ticket de gasto a nombre de ' + EMPRESA + ' - NIF ' + NIF;
-const JUSTIFICANTE_OTROS = 'Proforma, albarán, imagen del cash, sin justificante, otros';
+// Qué documentación acompaña a una salida de efectivo.
+const JUSTIFICANTE_FACTURA = 'Factura a nombre de ' + EMPRESA + ' - NIF ' + NIF;
+const JUSTIFICANTE_OTROS = 'Otra documentación (no es factura a nombre de la empresa)';
+const JUSTIFICANTE_SIN = 'Sin documentación';
 // Lo que se guarda en la columna cuando el movimiento es un ingreso.
 const JUSTIFICANTE_INGRESO = 'Imagen de cash';
 
@@ -249,6 +250,7 @@ function doGet() {
     conceptos: CONCEPTOS,
     justificanteFactura: JUSTIFICANTE_FACTURA,
     justificanteOtros: JUSTIFICANTE_OTROS,
+    justificanteSin: JUSTIFICANTE_SIN,
   });
   return t.evaluate()
     .setTitle('Registro de movimientos de caja')
@@ -335,6 +337,15 @@ function sanitize_(s) {
   return String(s || '').replace(/[\\/:*?"<>|]/g, '-').trim();
 }
 
+function extensionDe_(nombre, mime) {
+  const conPunto = String(nombre || '').match(/\.([A-Za-z0-9]{1,5})$/);
+  if (conPunto) return '.' + conPunto[1].toLowerCase();
+  if (mime === 'application/pdf') return '.pdf';
+  if (mime === 'image/png') return '.png';
+  if (mime === 'image/heic') return '.heic';
+  return '.jpg';
+}
+
 function nuevoId_(fechaRegistro) {
   const dia = Utilities.formatDate(fechaRegistro, Session.getScriptTimeZone(), 'yyyyMMdd');
   const sufijo = Utilities.getUuid().replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
@@ -344,7 +355,7 @@ function nuevoId_(fechaRegistro) {
 /**
  * data: {sede, responsable, tipoMovimiento, concepto, matricula, detalle,
  *        sedeContraparte, codigoEnvio, empleado, importe, fecha,
- *        tipoJustificante, photoBase64, photoMimeType}
+ *        tipoJustificante, photoBase64, photoMimeType, photoNombre}
  */
 function submitMovimiento(data) {
   data = data || {};
@@ -404,15 +415,20 @@ function submitMovimiento(data) {
   if (esIngreso) {
     tipoJustificante = JUSTIFICANTE_INGRESO;
     subCarpeta = concepto.carpeta;
+  } else if (data.tipoJustificante === JUSTIFICANTE_SIN) {
+    if (data.photoBase64) {
+      throw new Error('Has marcado que no cuentas con documentación, pero llega un archivo adjunto.');
+    }
+    tipoJustificante = JUSTIFICANTE_SIN;
   } else {
     tipoJustificante = data.tipoJustificante;
     if (tipoJustificante !== JUSTIFICANTE_FACTURA && tipoJustificante !== JUSTIFICANTE_OTROS) {
-      throw new Error('Falta indicar qué tipo de justificante se adjunta.');
+      throw new Error('Falta indicar si el documento adjunto es una factura a nombre de la empresa.');
+    }
+    if (!data.photoBase64) {
+      throw new Error('Adjunta la documentación de la salida, o marca que no cuentas con ella.');
     }
     conFactura = tipoJustificante === JUSTIFICANTE_FACTURA;
-    if (conFactura && !data.photoBase64) {
-      throw new Error('Para marcar "factura / ticket" hay que adjuntar la imagen.');
-    }
     subCarpeta = conFactura ? CARPETA_CON_FACTURA : concepto.carpetaSinFactura;
   }
 
@@ -440,7 +456,8 @@ function submitMovimiento(data) {
     else if (conFactura) partes.push('con factura');
     partes.push(Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd HH.mm'));
 
-    const nombreArchivo = sanitize_(partes.join(' - ')) + '.jpg';
+    const nombreArchivo = sanitize_(partes.join(' - ')) +
+      extensionDe_(data.photoNombre, data.photoMimeType);
     const decoded = Utilities.base64Decode(data.photoBase64);
     const blob = Utilities.newBlob(decoded, data.photoMimeType || 'image/jpeg', nombreArchivo);
     fileUrl = carpeta.createFile(blob).getUrl();

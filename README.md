@@ -108,8 +108,8 @@ solo lo necesitan para *consultar* lo suyo.
 | 9 | Nombre de empleado | "Pago al personal interno" | Sí |
 | 10 | Importe (€) | Siempre | Sí |
 | 11 | Fecha | Siempre | Sí |
-| 12 | Imagen del justificante | Siempre | Sí en ingresos, opcional en salidas |
-| 13 | Tipo de justificante | Solo en salidas (en ingresos es una nota) | Sí |
+| 12 | Imagen del justificante / Documentación de la salida | Siempre | Sí en ingresos; en salidas, adjuntar o declarar que no hay |
+| 13 | ¿Es factura a nombre de la empresa? | Solo en salidas, y solo si se adjunta algo | Sí |
 
 Los campos 7 y 8 solo ofrecen las **otras tres sedes**, nunca la elegida en el
 campo 1.
@@ -142,18 +142,34 @@ imagen es obligatoria.
 | Pago al personal interno | — | Opcional | Nombre de empleado |
 | Otros | Opcional | Obligatorio | — |
 
-### Tipo de justificante (campo 13)
+### Documentación (campos 12 y 13)
 
-- **En un ingreso** no hay nada que elegir: aparece la nota "Subir imagen de
-  cash" y la imagen pasa a ser obligatoria. En el Sheet se guarda
-  "Imagen de cash".
-- **En una salida** hay que elegir entre:
-  1. Factura / ticket de gasto a nombre de Sanchoyjote S.L. - NIF B72770191
-  2. Proforma, albarán, imagen del cash, sin justificante, otros
+**En un ingreso** el campo se llama "Imagen del justificante", la imagen es
+obligatoria y no hay nada que elegir: aparece la nota "Subir imagen de cash".
+En la hoja se guarda "Imagen de cash".
 
-  Sin imagen subida, la opción 1 está deshabilitada y queda marcada la 2. Al
-  subir la imagen se habilita la 1 y **se libera la selección**, para que
-  elija a conciencia.
+**En una salida** el campo se llama "Documentación de la salida" y se puede
+adjuntar tanto una foto como un archivo (por ejemplo un PDF). Hay dos
+caminos, y uno de los dos es obligatorio:
+
+1. **Adjuntar algo.** Entonces se pregunta: *¿El documento adjunto es una
+   factura emitida a nombre de Sanchoyjote S.L. (NIF: B72770191)?* con las
+   opciones **Sí** y **No**. La respuesta decide en qué carpeta de Drive se
+   archiva. Al adjuntar se limpia cualquier respuesta anterior, para que
+   elija a conciencia.
+2. **Marcar "No cuento con documentación para esta salida".** Se guarda como
+   "Sin documentación" y no se sube ningún archivo. Marcarlo descarta lo que
+   se hubiera adjuntado antes, y adjuntar algo desmarca la casilla: las dos
+   opciones son excluyentes.
+
+Debajo queda siempre la nota: *"Prioriza siempre la factura o comprobante de
+pago. Si no dispones de ellos, adjunta igualmente cualquier documentación o
+evidencia disponible (proforma, albarán u otro soporte)."*
+
+Los valores que se guardan en la columna **Tipo de justificante** son:
+`Imagen de cash`, `Factura a nombre de Sanchoyjote S.L. - NIF B72770191`,
+`Otra documentación (no es factura a nombre de la empresa)` y
+`Sin documentación`.
 
 ## Dónde se guardan las imágenes
 
@@ -166,6 +182,9 @@ La ruta es:
 
 Por ejemplo: `Caja Valencia / Salida Caja / Gastos con factura`. Las
 subcarpetas se crean solas la primera vez que hace falta cada una.
+
+El archivo conserva su extensión original, así que un PDF se guarda como
+PDF y se abre bien desde Drive.
 
 **Ingresos**
 
