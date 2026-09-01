@@ -133,7 +133,7 @@ imagen es obligatoria.
 | Concepto | Matrícula | Detalle | Campo extra |
 | --- | --- | --- | --- |
 | Reserva de moto | Obligatoria | Opcional | — |
-| Venta de moto | Obligatoria | Opcional | — |
+| Venta de moto *(incluye transporte, pack urban, etc.)* | Obligatoria | Opcional | — |
 | Mantenimiento | Obligatoria | Opcional | — |
 | Ingreso de cash de otra sede | — | Opcional | Sede de origen |
 | Ajuste contable de caja | — | Obligatorio | — |
@@ -171,7 +171,14 @@ operación al final: `3720 KDV 2`, `A 108859 3`.
 Antes de comprobar se normaliza lo escrito: se pasa a mayúsculas, se
 sustituyen guiones y puntos por espacios, y si viene todo junto se separan
 los bloques (`3720kdv` queda como `3720 KDV`). Al salir del campo se ve ya
-corregido. Lo que no encaje en ningún formato no deja enviar.
+corregido, y si no encaja en ningún formato el campo se marca en rojo con el
+aviso debajo, sin esperar a que pulse Enviar. Al empezar a corregir, el aviso
+desaparece.
+
+Un apunte de mantenimiento: la aclaración de "Venta de moto" vive en
+`etiqueta` y `nota`, separadas de `nombre`. Lo que se guarda en la hoja y lo
+que suma el resumen es siempre `nombre`, así que se puede cambiar el texto
+visible sin romper nada de lo ya registrado.
 
 ### Documentación (campos 12 y 13)
 

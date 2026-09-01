@@ -135,6 +135,10 @@ CONCEPTOS[INGRESO] = [
     nombre: 'Venta de moto', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
     carpeta: 'Reserva - Venta de moto', archivo: 'Cash venta moto',
+    // "nombre" es lo que se guarda en la hoja y lo que suma el resumen, así
+    // que la aclaración va aparte: solo se muestra, no se guarda.
+    etiqueta: 'Venta de moto (incluye transporte, pack urban, etc.)',
+    nota: 'Incluye transporte, pack urban, etc.',
   },
   {
     nombre: 'Mantenimiento', matricula: 'obligatorio', detalle: 'opcional',

@@ -85,6 +85,9 @@
     .opt.selected { border-color: #2563eb; background: #eff6ff; }
     .opt.disabled { opacity: 0.5; cursor: not-allowed; }
     .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    input.error { border-color: #d33; background: #fff5f5; }
+    input.error:focus { outline-color: #d33; }
+    #matriculaError { color: #b91c1c; font-weight: 600; }
     #progreso { text-align: center; margin-top: 8px; }
     #imagenAyuda { margin-bottom: 10px; line-height: 1.45; }
     #sinDocWrap { margin-top: 12px; }
@@ -207,6 +210,7 @@
         <select id="concepto">
           <option value="" disabled selected>Selecciona...</option>
         </select>
+        <div class="hint oculto" id="conceptoNota"></div>
       </div>
 
       <!-- 5to campo -->
@@ -214,6 +218,7 @@
         <label><span id="matriculaLabel">Matrícula</span></label>
         <input type="text" id="matricula" placeholder="3720 KDV" style="text-transform:uppercase;">
         <div class="hint">Formatos: 3720 KDV · M 8214 YV · C 2107 BWM · A 108859. Si es la segunda venta de la misma moto, añade el número al final (3720 KDV 2).</div>
+        <div class="hint oculto" id="matriculaError"></div>
       </div>
 
       <!-- 7mo / 8vo campo -->
@@ -353,9 +358,26 @@
       return m.slice(1).filter(Boolean).join(' ');
     }
 
-    // Al salir del campo se deja bien escrita, para que vea cómo queda.
-    el('matricula').addEventListener('blur', function() {
-      el('matricula').value = normalizarMatricula(el('matricula').value);
+    // Al salir del campo se deja bien escrita y, si no encaja en ningún
+    // formato, se avisa ahí mismo en vez de esperar a que pulse Enviar.
+    function revisarMatricula() {
+      const campo = el('matricula');
+      campo.value = normalizarMatricula(campo.value);
+      const mal = !!campo.value && !PATRON_MATRICULA.test(campo.value);
+      campo.classList.toggle('error', mal);
+      el('matriculaError').textContent = mal ? CONFIG.avisoMatricula : '';
+      mostrar('matriculaError', mal);
+      return !mal;
+    }
+
+    el('matricula').addEventListener('blur', revisarMatricula);
+
+    // Mientras corrige, el aviso desaparece: no se le regaña tecla a tecla.
+    el('matricula').addEventListener('input', function() {
+      if (el('matricula').classList.contains('error')) {
+        el('matricula').classList.remove('error');
+        mostrar('matriculaError', false);
+      }
     });
 
     var fechaInput = el('fecha');
@@ -397,7 +419,8 @@
       vacia.selected = true;
       select.appendChild(vacia);
       CONFIG.conceptos[tipo].forEach(function(c) {
-        select.appendChild(new Option(c.nombre, c.nombre));
+        // Se muestra la etiqueta con la aclaración, pero se guarda el nombre.
+        select.appendChild(new Option(c.etiqueta || c.nombre, c.nombre));
       });
 
       mostrar('conceptoWrap', true);
@@ -424,6 +447,9 @@
       if (c && c.matricula) {
         marcarObligatorio('matriculaLabel', c.matricula === 'obligatorio');
       }
+
+      el('conceptoNota').textContent = (c && c.nota) ? c.nota : '';
+      mostrar('conceptoNota', !!(c && c.nota));
 
       mostrar('detalleWrap', !!(c && c.detalle));
       if (c && c.detalle) {
@@ -645,7 +671,7 @@
       if (c.matricula === 'obligatorio' && !matricula) {
         return showError('La matrícula es obligatoria para "' + c.nombre + '".');
       }
-      if (matricula && !PATRON_MATRICULA.test(matricula)) {
+      if (!revisarMatricula()) {
         el('matricula').focus();
         return showError(CONFIG.avisoMatricula);
       }
@@ -773,6 +799,8 @@
       el('sinDocWrap').classList.remove('selected');
       el('tipoMovimiento').selectedIndex = 0;
       el('matricula').value = '';
+      el('matricula').classList.remove('error');
+      mostrar('matriculaError', false);
       el('detalle').value = '';
       el('codigoEnvio').value = '';
       el('empleado').value = '';
