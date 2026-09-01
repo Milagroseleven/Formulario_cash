@@ -135,9 +135,10 @@ CONCEPTOS[INGRESO] = [
     nombre: 'Venta de moto', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
     carpeta: 'Reserva - Venta de moto', archivo: 'Cash venta moto',
-    // "nombre" es lo que se guarda en la hoja y lo que suma el resumen, así
-    // que la aclaración va aparte: solo se muestra, no se guarda.
-    etiqueta: 'Venta de moto (incluye transporte, pack urban, etc.)',
+    // La aclaración va aparte del nombre: dentro de un desplegable no se
+    // puede poner parte del texto en otro color, así que se muestra en gris
+    // debajo. "nombre" es lo único que viaja a la hoja y lo que suma el
+    // resumen.
     nota: 'Incluye transporte, pack urban, etc.',
   },
   {
