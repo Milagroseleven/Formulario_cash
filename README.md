@@ -133,7 +133,7 @@ imagen es obligatoria.
 | Concepto | Matrícula | Detalle | Campo extra |
 | --- | --- | --- | --- |
 | Reserva de moto | Obligatoria | Opcional | — |
-| Venta de moto | Obligatoria | Opcional | — |
+| Venta de moto *(incluye transporte, pack urban, etc.)* | Obligatoria | Opcional | — |
 | Mantenimiento | Obligatoria | Opcional | — |
 | Ingreso de cash de otra sede | — | Opcional | Sede de origen |
 | Ajuste contable de caja | — | Obligatorio | — |
@@ -175,14 +175,15 @@ corregido, y si no encaja en ningún formato el campo se marca en rojo con el
 aviso debajo, sin esperar a que pulse Enviar. Al empezar a corregir, el aviso
 desaparece.
 
-Al elegir **Venta de moto** aparece en gris debajo del desplegable:
-*Incluye transporte, pack urban, etc.* El texto vive en el campo `nota` del
-concepto, aparte de `nombre`. Lo que se guarda en la hoja y lo que suma el
+En el desplegable, la opción se lee **"Venta de moto (incluye transporte,
+pack urban, etc.)"**, para que se vea al elegir. Al seleccionarla se repite la
+aclaración en gris debajo del campo. Dentro de un desplegable el navegador no
+deja poner parte del texto en otro color, así que ahí va todo en negro.
+
+Los textos visibles viven en `etiqueta` (la opción) y `nota` (el gris de
+debajo), aparte de `nombre`. Lo que se guarda en la hoja y lo que suma el
 resumen es siempre `nombre` —"Venta de moto" a secas—, así que la aclaración
 se puede cambiar sin romper nada de lo ya registrado.
-
-Dentro de un desplegable no se puede poner parte del texto en otro color: por
-eso la aclaración va debajo y no entre paréntesis en la propia opción.
 
 ### Documentación (campos 12 y 13)
 

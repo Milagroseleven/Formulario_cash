@@ -135,10 +135,11 @@ CONCEPTOS[INGRESO] = [
     nombre: 'Venta de moto', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
     carpeta: 'Reserva - Venta de moto', archivo: 'Cash venta moto',
-    // La aclaración va aparte del nombre: dentro de un desplegable no se
-    // puede poner parte del texto en otro color, así que se muestra en gris
-    // debajo. "nombre" es lo único que viaja a la hoja y lo que suma el
-    // resumen.
+    // La aclaración tiene que verse al desplegar la lista, así que va en la
+    // propia opción. Dentro de un desplegable el navegador no deja poner
+    // parte del texto en otro color: va toda en negro. "nombre" es lo único
+    // que viaja a la hoja y lo que suma el resumen.
+    etiqueta: 'Venta de moto (incluye transporte, pack urban, etc.)',
     nota: 'Incluye transporte, pack urban, etc.',
   },
   {
