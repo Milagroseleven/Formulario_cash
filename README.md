@@ -185,6 +185,33 @@ la hoja y lo que suma el
 resumen es siempre `nombre` —"Venta de moto" a secas—, así que la aclaración
 se puede cambiar sin romper nada de lo ya registrado.
 
+### Importe (campo 10)
+
+El campo es de **texto**, no numérico, a propósito. Con `type="number"` el
+navegador descarta el carácter que no coincide con el separador decimal del
+idioma del teclado: en iPhone y en Mac eso dejaba al usuario sin poder
+escribir decimales, ni con coma ni con punto. Con texto e `inputmode="decimal"`
+el teclado sigue siendo numérico y valen los dos.
+
+Se admite cualquiera de estas formas, con separador de miles o sin él:
+
+| Se escribe | Se guarda |
+| --- | --- |
+| `12,50` o `12.50` | 12,50 € |
+| `1.234,56` o `1,234.56` | 1.234,56 € |
+| `1.500` o `1.234.567` | 1.500 € y 1.234.567 € |
+| `3500` | 3.500,00 € |
+
+Cuando aparecen los dos separadores, el último es el decimal. Con uno solo,
+manda la costumbre española: la coma separa decimales y el punto, miles.
+
+Se rechaza lo ambiguo o lo que huele a error de tecleo, en vez de inventarse
+una cifra: `12,555` (tres decimales), `1,500` (¿mil quinientos o uno con
+cinco?), `12,,50` o `1.23.456`. Al salir del campo el importe se marca en rojo
+con el aviso, y se muestra a la española (`12,50`).
+
+Se comprueba en el navegador y otra vez en el servidor.
+
 ### Documentación (campos 12 y 13)
 
 **En un ingreso** el campo se llama "Foto del efectivo recibido", con el texto

@@ -392,6 +392,46 @@ const AVISO_MATRICULA = 'Revisa la matrícula. Formatos válidos: 3720 KDV, ' +
   'M 8214 YV, C 2107 BWM o A 108859. Si es la segunda venta de la misma moto, ' +
   'añade el número al final: 3720 KDV 2.';
 
+/**
+ * Acepta el importe escrito con coma o con punto, y con separador de miles.
+ * Cuando hay dos separadores, el último es el decimal ("1.234,56" y
+ * "1,234.56" valen los dos). Con uno solo seguido de tres cifras se entiende
+ * que son miles ("1.500" son mil quinientos, no uno con cinco).
+ */
+function normalizarImporte_(valor) {
+      var t = String(valor || '').replace(/[^0-9.,]/g, '');
+      if (!t) return '';
+
+      var comas = (t.match(/,/g) || []).length;
+      var puntos = (t.match(/[.]/g) || []).length;
+      var corte = -1;
+
+      if (comas && puntos) {
+        // Mezcla de los dos: el último es el decimal, valga "1.234,56" o
+        // "1,234.56".
+        corte = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+      } else if (comas === 1) {
+        // En español la coma es el decimal: "12,50".
+        corte = t.lastIndexOf(',');
+      } else if (puntos === 1) {
+        // Un punto con tres cifras detrás son miles ("1.500" son mil
+        // quinientos); con una o dos, decimales ("12.50").
+        var detras = t.length - t.lastIndexOf('.') - 1;
+        if (detras !== 3) corte = t.lastIndexOf('.');
+      }
+      // Varios separadores iguales son todos de miles: "1.234.567". Solo se
+      // aceptan si están bien puestos, de tres en tres; si no, es un error de
+      // tecleo ("12,,50") y se devuelve tal cual para que no pase la
+      // comprobación, en vez de inventarse una cifra.
+      if (corte === -1) {
+        if (!/^[0-9]{1,3}([.,][0-9]{3})+$/.test(t)) return t;
+        return t.replace(/[.,]/g, '');
+      }
+      var entera = t.slice(0, corte).replace(/[.,]/g, '');
+      var decimal = t.slice(corte + 1).replace(/[.,]/g, '');
+      return entera + '.' + decimal;
+}
+
 /** Mayúsculas, un solo espacio entre bloques y sin guiones ni puntos. */
 function normalizarMatricula_(valor) {
   return String(valor || '')
@@ -467,9 +507,14 @@ function submitMovimiento(data) {
     throw new Error('Falta indicar el nombre del empleado.');
   }
 
-  const importe = Number(data.importe);
+  const importeTexto = normalizarImporte_(data.importe);
+  const importe = Number(importeTexto);
   if (!importe || importe <= 0) {
     throw new Error('El importe tiene que ser mayor que cero.');
+  }
+  if (!/^[0-9]+([.][0-9]{1,2})?$/.test(importeTexto)) {
+    throw new Error('Revisa el importe: como mucho dos decimales. Puedes usar ' +
+      'coma o punto (12,50 o 12.50).');
   }
   if (!data.fecha) {
     throw new Error('Falta la fecha del movimiento.');
