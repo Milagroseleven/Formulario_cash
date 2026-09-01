@@ -287,10 +287,29 @@ function getCarpetaSede_(sede) {
   return DriveApp.createFolder(nombre);
 }
 
+/**
+ * Buscar una subcarpeta por nombre obliga a Drive a recorrer la carpeta
+ * entera, y eso son varias décimas por envío. Como las subcarpetas no
+ * cambian nunca, se recuerda su ID la primera vez. Si alguien la borra o la
+ * mueve fuera, se detecta al fallar y se vuelve a buscar.
+ */
 function getSubCarpeta_(parent, nombre) {
+  const props = PropertiesService.getScriptProperties();
+  const clave = 'carp_' + parent.getId() + '_' + nombre;
+  const guardada = props.getProperty(clave);
+
+  if (guardada) {
+    try {
+      return DriveApp.getFolderById(guardada);
+    } catch (err) {
+      props.deleteProperty(clave);
+    }
+  }
+
   const it = parent.getFoldersByName(nombre);
-  if (it.hasNext()) return it.next();
-  return parent.createFolder(nombre);
+  const carpeta = it.hasNext() ? it.next() : parent.createFolder(nombre);
+  props.setProperty(clave, carpeta.getId());
+  return carpeta;
 }
 
 /** Deja en euros las dos columnas de importe, incluidas las filas futuras. */
@@ -331,6 +350,23 @@ function ordenarPorFecha_(sheet) {
   if (ultima < 3) return;
   sheet.getRange(2, 1, ultima - 1, HEADERS.length)
     .sort({ column: COL_FECHA_MOV, ascending: true });
+}
+
+/**
+ * Añade la fila y solo reordena si hace falta. Lo normal es registrar un
+ * movimiento de hoy, que ya entra al final: en ese caso no hay nada que
+ * ordenar, y así se evita reescribir la tabla entera en cada envío.
+ */
+function insertarOrdenado_(sheet, fila) {
+  const antes = sheet.getLastRow();
+  sheet.appendRow(fila);
+  if (antes < 2) return;
+
+  const ultimaFecha = sheet.getRange(antes, COL_FECHA_MOV).getValue();
+  const nuevaFecha = fila[COL_FECHA_MOV - 1];
+  const ordenadas = ultimaFecha instanceof Date && nuevaFecha instanceof Date &&
+    nuevaFecha.getTime() >= ultimaFecha.getTime();
+  if (!ordenadas) ordenarPorFecha_(sheet);
 }
 
 function sanitize_(s) {
@@ -493,16 +529,14 @@ function submitMovimiento(data) {
         '. Revisa el hojaId en SEDES_CONFIG.');
     }
     const hojaSede = getHojaRegistro_(libroSede);
-    hojaSede.appendRow(fila);
-    ordenarPorFecha_(hojaSede);
+    insertarOrdenado_(hojaSede, fila);
     asegurarResumen_(libroSede);
   }
 
   // Hoja maestra: la que contiene todas las sedes.
   const maestra = SpreadsheetApp.getActiveSpreadsheet();
   const hojaMaestra = getHojaRegistro_(maestra);
-  hojaMaestra.appendRow(fila);
-  ordenarPorFecha_(hojaMaestra);
+  insertarOrdenado_(hojaMaestra, fila);
   asegurarResumen_(maestra);
 
   return {

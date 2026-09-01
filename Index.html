@@ -85,6 +85,7 @@
     .opt.selected { border-color: #2563eb; background: #eff6ff; }
     .opt.disabled { opacity: 0.5; cursor: not-allowed; }
     .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    #progreso { text-align: center; margin-top: 8px; }
     #imagenAyuda { margin-bottom: 10px; line-height: 1.45; }
     #sinDocWrap { margin-top: 12px; }
     .oculto { display: none; }
@@ -285,6 +286,7 @@
       <div id="errorBox"></div>
 
       <button id="submitBtn">Enviar</button>
+      <div class="hint oculto" id="progreso"></div>
     </div>
 
     <div id="successBox">
@@ -450,40 +452,101 @@
     revisarSede();
 
     // --- 12vo y 13vo campos: imagen y tipo de justificante --------------
-    var photoFile = null;
     var photoDataUrl = null;
+    var photoNombre = '';
+    var photoMime = '';
 
     el('cameraBtn').addEventListener('click', function() { el('fileInputCamera').click(); });
     el('archivoBtn').addEventListener('click', function() { el('fileInputArchivo').click(); });
 
+    // Una foto de móvil ronda los 4 MB, y viaja codificada en texto, lo que
+    // la engorda otro tercio. Encogerla a 1600 px deja un archivo de unos
+    // 300 KB, de sobra para leer un ticket, y recorta la mayor parte de la
+    // espera al enviar. Un PDF u otro archivo se deja tal cual.
+    var LADO_MAXIMO = 1600;
+
     function onPhotoSelected(e) {
       var file = e.target.files[0];
       if (!file) return;
-      photoFile = file;
-      var esImagen = /^image\//.test(file.type || '');
+      el('previewImg').style.display = 'none';
+      el('archivoNombre').textContent = 'Preparando el archivo…';
+      el('preview').style.display = 'block';
+
       var reader = new FileReader();
-      reader.onload = function(ev) {
-        photoDataUrl = ev.target.result;
-        // Un PDF no se puede previsualizar: se muestra el nombre.
-        el('previewImg').style.display = esImagen ? 'inline-block' : 'none';
-        if (esImagen) el('previewImg').src = photoDataUrl;
-        el('archivoNombre').textContent = file.name;
-        el('preview').style.display = 'block';
-        // Adjuntar algo descarta el "no tengo documentación", y libera la
-        // elección para que responda a conciencia si es factura o no.
-        el('sinDoc').checked = false;
-        el('optFactura').checked = false;
-        el('optOtros').checked = false;
-        actualizarJustificante();
+      reader.onerror = function() {
+        el('archivoNombre').textContent = 'No se pudo leer el archivo. Inténtalo otra vez.';
       };
+      reader.onload = function(ev) { encoger(file, ev.target.result); };
       reader.readAsDataURL(file);
+    }
+
+    // Se trabaja sobre el contenido ya leído en vez de sobre el archivo: así
+    // no hacen falta URL temporales, que según dónde esté publicada la
+    // página el navegador puede bloquear.
+    function encoger(file, dataUrl) {
+      if (!/^image\//.test(file.type || '')) {
+        return aplicarArchivo(file.name, file.type || 'application/octet-stream', dataUrl);
+      }
+
+      var img = new Image();
+      img.onerror = function() { aplicarArchivo(file.name, file.type, dataUrl); };
+      img.onload = function() {
+        var mayor = Math.max(img.width, img.height);
+        if (!mayor || mayor <= LADO_MAXIMO) {
+          return aplicarArchivo(file.name, file.type, dataUrl);
+        }
+        var escala = LADO_MAXIMO / mayor;
+        var lienzo = document.createElement('canvas');
+        lienzo.width = Math.round(img.width * escala);
+        lienzo.height = Math.round(img.height * escala);
+        lienzo.getContext('2d').drawImage(img, 0, 0, lienzo.width, lienzo.height);
+
+        var reducida;
+        try {
+          reducida = lienzo.toDataURL('image/jpeg', 0.82);
+        } catch (err) {
+          return aplicarArchivo(file.name, file.type, dataUrl);
+        }
+        if (reducida.length >= dataUrl.length) {
+          return aplicarArchivo(file.name, file.type, dataUrl);
+        }
+        aplicarArchivo(file.name.replace(/\.[^.]+$/, '') + '.jpg', 'image/jpeg', reducida);
+      };
+      img.src = dataUrl;
+    }
+
+    function tamanoKb(dataUrl) {
+      var base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      return Math.max(1, Math.round(base64.length * 0.75 / 1024));
+    }
+
+    function aplicarArchivo(nombre, mime, dataUrl) {
+      photoDataUrl = dataUrl;
+      photoNombre = nombre;
+      photoMime = mime;
+
+      var esImagen = /^image\//.test(mime || '');
+      // Un PDF no se puede previsualizar: se muestra el nombre.
+      el('previewImg').style.display = esImagen ? 'inline-block' : 'none';
+      if (esImagen) el('previewImg').src = dataUrl;
+      el('archivoNombre').textContent = nombre + '  ·  ' + tamanoKb(dataUrl) + ' KB';
+      el('preview').style.display = 'block';
+
+      // Adjuntar algo descarta el "no tengo documentación", y libera la
+      // elección para que responda a conciencia si es factura o no.
+      el('sinDoc').checked = false;
+      el('sinDocWrap').classList.remove('selected');
+      el('optFactura').checked = false;
+      el('optOtros').checked = false;
+      actualizarJustificante();
     }
     el('fileInputCamera').addEventListener('change', onPhotoSelected);
     el('fileInputArchivo').addEventListener('change', onPhotoSelected);
 
     function limpiarAdjunto() {
-      photoFile = null;
       photoDataUrl = null;
+      photoNombre = '';
+      photoMime = '';
       el('preview').style.display = 'none';
       el('archivoNombre').textContent = '';
       el('fileInputCamera').value = '';
@@ -594,12 +657,16 @@
       }
 
       var base64 = photoDataUrl ? photoDataUrl.split(',')[1] : '';
-      var mimeType = photoFile ? (photoFile.type || 'image/jpeg') : '';
-      var nombreArchivo = photoFile ? photoFile.name : '';
+      var mimeType = photoDataUrl ? (photoMime || 'image/jpeg') : '';
+      var nombreArchivo = photoDataUrl ? photoNombre : '';
 
       var btn = el('submitBtn');
       btn.disabled = true;
-      btn.textContent = 'Enviando...';
+      btn.textContent = 'Enviando…';
+      el('progreso').textContent = base64
+        ? 'Subiendo el archivo y guardando el movimiento. Puede tardar unos segundos.'
+        : 'Guardando el movimiento…';
+      mostrar('progreso', true);
 
       google.script.run
         .withSuccessHandler(function(result) {
@@ -609,12 +676,14 @@
             result.sedeContraparte + ', para que lo indique al registrar el ingreso del dinero ' +
             'en su sede. Así los dos movimientos quedan emparejados.';
           mostrar('avisoEnvio', result.esEnvioEntreSedes);
+          mostrar('progreso', false);
           el('formWrap').classList.add('hidden');
           el('successBox').style.display = 'block';
         })
         .withFailureHandler(function(err) {
           btn.disabled = false;
           btn.textContent = 'Enviar';
+          mostrar('progreso', false);
           showError('Error al guardar: ' + (err && err.message ? err.message : err));
         })
         .submitMovimiento({
@@ -691,6 +760,7 @@
       var btn = el('submitBtn');
       btn.disabled = false;
       btn.textContent = 'Enviar';
+      mostrar('progreso', false);
       el('successBox').style.display = 'none';
       el('formWrap').classList.remove('hidden');
     });

@@ -275,6 +275,27 @@ estas columnas:
   de la sede de destino; esa sede lo escribe en **Código del envío** al
   registrar su ingreso, y así las dos filas quedan emparejadas.
 
+## Velocidad de guardado
+
+Cada envío hace unas diez operaciones contra Google (subir el archivo, buscar
+las carpetas, crear el archivo, escribir en dos hojas), y cada una es una ida
+y vuelta. Para que no se haga larga la espera:
+
+- **La foto se encoge en el propio móvil** antes de subirla: se reduce a
+  1600 px de lado mayor y se recomprime en JPEG. Una foto de móvil pasa de
+  varios MB a unos cientos de KB, sin perder legibilidad. Los PDF y demás
+  archivos se suben tal cual.
+- **Las subcarpetas de Drive se recuerdan** por su ID en vez de buscarlas por
+  nombre en cada envío. Si alguien las borra o las mueve fuera, se detecta al
+  fallar y se vuelven a buscar.
+- **Solo se reordena la hoja cuando hace falta.** Lo normal es registrar un
+  movimiento de hoy, que ya entra al final; solo se reordena al registrar una
+  fecha atrasada.
+- Mientras se envía se explica en qué paso va, para que la espera se entienda.
+
+Para medir cuánto tarda de verdad: en el editor de Apps Script, sección
+**Ejecuciones**, sale la duración real de cada envío.
+
 ## Despliegue (una sola vez)
 
 1. Crea el Google Sheet **maestro** en blanco y nómbralo, por ejemplo,
