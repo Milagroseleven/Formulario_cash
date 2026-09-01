@@ -275,6 +275,38 @@ estas columnas:
   de la sede de destino; esa sede lo escribe en **Código del envío** al
   registrar su ingreso, y así las dos filas quedan emparejadas.
 
+## El consolidado recoge las correcciones de las sedes
+
+Cada envío escribe la fila en la hoja de su sede **y** en la maestra. A partir
+de ahí son dos copias independientes: si la sede corrige un importe, la
+maestra se quedaría con el valor viejo.
+
+Para evitarlo, `sincronizarMaestra()` rehace la pestaña **Registro** de la
+maestra con lo que haya en ese momento en las cuatro hojas de sede. Recoge
+correcciones, filas borradas y filas añadidas a mano.
+
+**La hoja maestra pasa a ser de solo lectura.** Lo que se escriba
+directamente en ella se pierde en la siguiente sincronización: las
+correcciones se hacen siempre en la hoja de la sede.
+
+Dos maneras de lanzarla:
+
+- **Automática**: un activador cada 10 minutos. Se añade una sola vez desde
+  el editor de Apps Script → **Activadores** (icono del reloj) → *Añadir
+  activador* → función `sincronizarMaestra`, origen *Basado en tiempo*,
+  *Temporizador por minutos*, *Cada 10 minutos*.
+- **A mano**: en la hoja maestra, menú **Caja → Actualizar consolidado
+  ahora**. Solo funciona para quien tenga acceso a las cuatro hojas de sede.
+
+Salvaguardas:
+
+- Si alguna hoja de sede no se puede leer, **se cancela entera** sin tocar el
+  consolidado. Es preferible tenerlo desactualizado a que le falte una sede
+  por un fallo pasajero.
+- La primera vez guarda una pestaña `Registro (copia previa)` con lo que
+  hubiera antes, por si alguna fila antigua no estuviera en ninguna sede. Se
+  puede borrar cuando se compruebe que todo cuadra.
+
 ## Velocidad de guardado
 
 Cada envío hace unas diez operaciones contra Google (subir el archivo, buscar

@@ -821,3 +821,108 @@ function crearResumenes() {
     prepararLibro_(SpreadsheetApp.openById(id));
   });
 }
+
+
+// ---------------------------------------------------------------------
+// CONSOLIDADO
+//
+// Cada envío escribe la fila en la hoja de su sede y en la maestra. A
+// partir de ahí son dos copias independientes: si la sede corrige algo, la
+// maestra se queda con lo viejo. Esta sincronización rehace la maestra a
+// partir de las cuatro hojas de sede, de modo que lo que quede en la sede
+// es siempre lo que vale.
+//
+// Consecuencia importante: la hoja maestra pasa a ser de solo lectura. Lo
+// que se escriba directamente en ella se perderá en la siguiente
+// sincronización. Las correcciones se hacen en la hoja de la sede.
+// ---------------------------------------------------------------------
+
+const HOJA_COPIA_PREVIA = 'Registro (copia previa)';
+
+/** Menú para forzar la actualización sin esperar al próximo repaso. */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('Caja')
+    .addItem('Actualizar consolidado ahora', 'sincronizarDesdeMenu')
+    .addToUi();
+}
+
+function sincronizarDesdeMenu() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  try {
+    const r = sincronizarMaestra();
+    ss.toast(r.filas + ' movimientos recogidos de ' + r.sedes + ' sedes.',
+      'Consolidado actualizado', 8);
+  } catch (err) {
+    ss.toast(err.message, 'No se pudo actualizar', 10);
+    throw err;
+  }
+}
+
+/**
+ * Rehace la pestaña "Registro" de la maestra con lo que haya ahora mismo en
+ * las cuatro hojas de sede.
+ *
+ * Si alguna sede no se puede leer, se cancela entera sin tocar nada: es
+ * preferible un consolidado desactualizado a uno al que le falte una sede
+ * por un fallo pasajero.
+ */
+function sincronizarMaestra() {
+  const filas = [];
+  let sedesLeidas = 0;
+
+  SEDES.forEach(function(sede) {
+    const id = (SEDES_CONFIG[sede] || {}).hojaId;
+    if (!id) return;
+
+    let libro;
+    try {
+      libro = SpreadsheetApp.openById(id);
+    } catch (err) {
+      throw new Error('No se pudo leer la hoja de ' + sede +
+        '. No se ha tocado el consolidado, para no dejarlo incompleto.');
+    }
+    sedesLeidas++;
+
+    const hoja = libro.getSheetByName(SHEET_NAME);
+    if (!hoja || hoja.getLastRow() < 2) return;
+
+    const datos = hoja.getRange(2, 1, hoja.getLastRow() - 1, HEADERS.length).getValues();
+    datos.forEach(function(fila) {
+      if (fila[1]) filas.push(fila); // sin ID de movimiento, no es una fila válida
+    });
+  });
+
+  filas.sort(function(a, b) {
+    const fa = a[COL_FECHA_MOV - 1];
+    const fb = b[COL_FECHA_MOV - 1];
+    const va = (fa instanceof Date) ? fa.getTime() : Number.MAX_SAFE_INTEGER;
+    const vb = (fb instanceof Date) ? fb.getTime() : Number.MAX_SAFE_INTEGER;
+    if (va !== vb) return va - vb;
+    const ra = (a[0] instanceof Date) ? a[0].getTime() : 0;
+    const rb = (b[0] instanceof Date) ? b[0].getTime() : 0;
+    return ra - rb;
+  });
+
+  const maestra = SpreadsheetApp.getActiveSpreadsheet();
+  const registro = getHojaRegistro_(maestra);
+  const props = PropertiesService.getScriptProperties();
+
+  // Red de seguridad: la primera vez se guarda una copia de lo que hubiera
+  // en la maestra, por si alguna fila antigua no estuviera en ninguna sede.
+  if (!props.getProperty('copia_previa') && registro.getLastRow() > 1) {
+    registro.copyTo(maestra).setName(HOJA_COPIA_PREVIA);
+    props.setProperty('copia_previa', new Date().toISOString());
+  }
+
+  const ultima = registro.getLastRow();
+  if (ultima > 1) {
+    registro.getRange(2, 1, ultima - 1, HEADERS.length).clearContent();
+  }
+  if (filas.length) {
+    registro.getRange(2, 1, filas.length, HEADERS.length).setValues(filas);
+  }
+  formatoImportes_(registro);
+
+  return { filas: filas.length, sedes: sedesLeidas };
+}
