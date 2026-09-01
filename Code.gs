@@ -140,7 +140,6 @@ CONCEPTOS[INGRESO] = [
     // parte del texto en otro color: va toda en negro. "nombre" es lo único
     // que viaja a la hoja y lo que suma el resumen.
     etiqueta: 'Venta de moto (incluye transporte, pack urban, etc.)',
-    nota: 'Incluye transporte, pack urban, etc.',
   },
   {
     nombre: 'Mantenimiento', matricula: 'obligatorio', detalle: 'opcional',

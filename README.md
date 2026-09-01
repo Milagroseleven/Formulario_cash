@@ -176,12 +176,12 @@ aviso debajo, sin esperar a que pulse Enviar. Al empezar a corregir, el aviso
 desaparece.
 
 En el desplegable, la opción se lee **"Venta de moto (incluye transporte,
-pack urban, etc.)"**, para que se vea al elegir. Al seleccionarla se repite la
-aclaración en gris debajo del campo. Dentro de un desplegable el navegador no
-deja poner parte del texto en otro color, así que ahí va todo en negro.
+pack urban, etc.)"**, para que se vea al elegir. Dentro de un desplegable el
+navegador no deja poner parte del texto en otro color, así que va todo en
+negro.
 
-Los textos visibles viven en `etiqueta` (la opción) y `nota` (el gris de
-debajo), aparte de `nombre`. Lo que se guarda en la hoja y lo que suma el
+El texto visible vive en `etiqueta`, aparte de `nombre`. Lo que se guarda en
+la hoja y lo que suma el
 resumen es siempre `nombre` —"Venta de moto" a secas—, así que la aclaración
 se puede cambiar sin romper nada de lo ya registrado.
 
