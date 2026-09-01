@@ -251,6 +251,8 @@ function doGet() {
     justificanteFactura: JUSTIFICANTE_FACTURA,
     justificanteOtros: JUSTIFICANTE_OTROS,
     justificanteSin: JUSTIFICANTE_SIN,
+    reMatricula: RE_MATRICULA.source,
+    avisoMatricula: AVISO_MATRICULA,
   });
   return t.evaluate()
     .setTitle('Registro de movimientos de caja')
@@ -369,6 +371,31 @@ function insertarOrdenado_(sheet, fila) {
   if (!ordenadas) ordenarPorFecha_(sheet);
 }
 
+/**
+ * Formatos de matrícula admitidos:
+ *   3720 KDV      actual: 4 cifras + 3 letras
+ *   A 108859      antigua sin letras finales: 1-2 letras de provincia + cifras
+ *   M 8214 YV     antigua: provincia + 4 cifras + 2 letras
+ *   C 2107 BWM    antigua: provincia + 4 cifras + 3 letras
+ *
+ * Cuando la misma moto se vende más de una vez se le añade el número de la
+ * operación al final: "3720 KDV 2", "A 108859 3".
+ */
+const RE_MATRICULA = /^(\d{4} [A-Z]{3}|[A-Z]{1,2} \d{4,6}( [A-Z]{1,3})?)( \d{1,2})?$/;
+
+const AVISO_MATRICULA = 'Revisa la matrícula. Formatos válidos: 3720 KDV, ' +
+  'M 8214 YV, C 2107 BWM o A 108859. Si es la segunda venta de la misma moto, ' +
+  'añade el número al final: 3720 KDV 2.';
+
+/** Mayúsculas, un solo espacio entre bloques y sin guiones ni puntos. */
+function normalizarMatricula_(valor) {
+  return String(valor || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 function sanitize_(s) {
   return String(s || '').replace(/[\\/:*?"<>|]/g, '-').trim();
 }
@@ -413,6 +440,12 @@ function submitMovimiento(data) {
 
   if (concepto.matricula === 'obligatorio' && !data.matricula) {
     throw new Error('La matrícula es obligatoria para "' + concepto.nombre + '".');
+  }
+  if (data.matricula) {
+    data.matricula = normalizarMatricula_(data.matricula);
+    if (!RE_MATRICULA.test(data.matricula)) {
+      throw new Error(AVISO_MATRICULA);
+    }
   }
   if (concepto.detalle === 'obligatorio' && !data.detalle) {
     throw new Error('El detalle es obligatorio para "' + concepto.nombre + '".');

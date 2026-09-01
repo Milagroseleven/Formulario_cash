@@ -211,8 +211,9 @@
 
       <!-- 5to campo -->
       <div id="matriculaWrap" class="oculto">
-        <label><span id="matriculaLabel">Matrícula</span><span class="formato">(1111 AAA / A 1111 AAA)</span></label>
-        <input type="text" id="matricula" placeholder="1111 AAA" style="text-transform:uppercase;">
+        <label><span id="matriculaLabel">Matrícula</span></label>
+        <input type="text" id="matricula" placeholder="3720 KDV" style="text-transform:uppercase;">
+        <div class="hint">Formatos: 3720 KDV · M 8214 YV · C 2107 BWM · A 108859. Si es la segunda venta de la misma moto, añade el número al final (3720 KDV 2).</div>
       </div>
 
       <!-- 7mo / 8vo campo -->
@@ -335,6 +336,27 @@
         mostrar('avisoSede', false);
       }
     }
+
+    // La misma comprobación que hace el servidor, para avisar antes de enviar.
+    var PATRON_MATRICULA = new RegExp(CONFIG.reMatricula);
+
+    function normalizarMatricula(valor) {
+      var t = String(valor || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ');
+      if (!t || t.indexOf(' ') !== -1) return t;
+      // Escrito todo junto: se separan los bloques (3720KDV -> 3720 KDV).
+      var m = t.match(/^(\d{4})([A-Z]{3})$/) || t.match(/^([A-Z]{1,2})(\d{4,6})([A-Z]{0,3})$/);
+      if (!m) return t;
+      return m.slice(1).filter(Boolean).join(' ');
+    }
+
+    // Al salir del campo se deja bien escrita, para que vea cómo queda.
+    el('matricula').addEventListener('blur', function() {
+      el('matricula').value = normalizarMatricula(el('matricula').value);
+    });
 
     var fechaInput = el('fecha');
     var hoy = new Date().toISOString().slice(0, 10);
@@ -606,7 +628,8 @@
       var sede = el('sede').value;
       var responsable = el('responsable').value.trim();
       var tipoMovimiento = el('tipoMovimiento').value;
-      var matricula = el('matricula').value.trim().toUpperCase();
+      var matricula = normalizarMatricula(el('matricula').value);
+      el('matricula').value = matricula;
       var detalle = el('detalle').value.trim();
       var sedeContraparte = el('sedeContraparte').value;
       var codigoEnvio = el('codigoEnvio').value.trim().toUpperCase();
@@ -621,6 +644,10 @@
       if (!c) return showError('Falta indicar el concepto del movimiento.');
       if (c.matricula === 'obligatorio' && !matricula) {
         return showError('La matrícula es obligatoria para "' + c.nombre + '".');
+      }
+      if (matricula && !PATRON_MATRICULA.test(matricula)) {
+        el('matricula').focus();
+        return showError(CONFIG.avisoMatricula);
       }
       if (c.detalle === 'obligatorio' && !detalle) {
         return showError('El detalle es obligatorio para "' + c.nombre + '".');

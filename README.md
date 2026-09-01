@@ -111,7 +111,7 @@ solo lo necesitan para *consultar* lo suyo.
 | 2 | Responsable | Siempre | Sí |
 | 3 | Tipo de movimiento (Ingreso / Salida de efectivo) | Siempre | Sí |
 | 4 | Tipo de ingreso / Tipo de salida de efectivo | Al elegir el campo 3 | Sí |
-| 5 | Matrícula | Según el concepto | Según el concepto |
+| 5 | Matrícula (con formato validado) | Según el concepto | Según el concepto |
 | 6 | Detalle | Según el concepto | Según el concepto |
 | 7 | Sede de origen del cash | "Ingreso de cash de otra sede" | Sí |
 | — | Código del envío | "Ingreso de cash de otra sede" | No |
@@ -152,6 +152,26 @@ imagen es obligatoria.
 | Ajuste contable de caja | — | Obligatorio | — |
 | Pago al personal interno | — | Opcional | Nombre de empleado |
 | Otros | Opcional | Obligatorio | — |
+
+### Matrícula (campo 5)
+
+Se comprueba el formato, en el navegador y otra vez en el servidor. Se
+admiten los cuatro formatos que se usan en la empresa:
+
+| Formato | Ejemplo |
+| --- | --- |
+| 4 cifras + 3 letras | `3720 KDV` |
+| Provincia + cifras | `A 108859` |
+| Provincia + 4 cifras + 2 letras | `M 8214 YV` |
+| Provincia + 4 cifras + 3 letras | `C 2107 BWM` |
+
+Cuando la misma moto se vende más de una vez, se añade el número de la
+operación al final: `3720 KDV 2`, `A 108859 3`.
+
+Antes de comprobar se normaliza lo escrito: se pasa a mayúsculas, se
+sustituyen guiones y puntos por espacios, y si viene todo junto se separan
+los bloques (`3720kdv` queda como `3720 KDV`). Al salir del campo se ve ya
+corregido. Lo que no encaje en ningún formato no deja enviar.
 
 ### Documentación (campos 12 y 13)
 
