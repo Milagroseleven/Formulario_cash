@@ -132,6 +132,7 @@ imagen es obligatoria.
 
 | Concepto | Matrícula | Detalle | Campo extra |
 | --- | --- | --- | --- |
+| Saldo de caja - sistema anterior *(no aparece en el formulario)* | — | Opcional | — |
 | Reserva de moto | Obligatoria | Opcional | — |
 | Venta de moto *(incluye transporte, pack urban, etc.)* | Obligatoria | Opcional | — |
 | Mantenimiento | Obligatoria | Opcional | — |
@@ -152,6 +153,32 @@ imagen es obligatoria.
 | Ajuste contable de caja | — | Obligatorio | — |
 | Pago al personal interno | — | Opcional | Nombre de empleado |
 | Otros | Opcional | Obligatorio | — |
+
+### Conceptos que solo existen en la hoja
+
+Un concepto marcado con `soloHoja: true` **no se ofrece en el formulario**,
+pero el servidor lo reconoce y el resumen le reserva su línea y lo suma. Sirve
+para filas que escribe contabilidad a mano.
+
+Hoy solo lo usa **"Saldo de caja - sistema anterior"**: el arrastre del
+sistema de caja anterior, que se pone una única vez como primera fila del
+registro de cada sede.
+
+Al escribir una fila a mano en la hoja de una sede hay que rellenar, como
+mínimo:
+
+| Columna | Qué poner |
+| --- | --- |
+| `ID movimiento` | Cualquier referencia, por ejemplo `SALDO-INICIAL`. **Sin esto la fila desaparece** en la siguiente sincronización. |
+| `Sede` | La sede a la que pertenece. |
+| `Tipo de movimiento` | `Ingreso de efectivo` |
+| `Concepto` | `Saldo de caja - sistema anterior`, escrito igual. |
+| `Importe (EUR)` | El saldo, en positivo. |
+| `Importe con signo` | El mismo importe. **Esta es la columna que suma el resumen**; si se deja vacía, el saldo no cuenta. |
+| `Fecha del movimiento` | Una fecha anterior al primer movimiento, para que quede arriba. |
+
+Y recuerda: la fila va en la **hoja de la sede**, nunca en la maestra. La
+maestra se rehace desde las sedes y lo que se escriba allí se pierde.
 
 ### Matrícula (campo 5)
 

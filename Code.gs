@@ -75,7 +75,7 @@ const USUARIOS = {
 const SHEET_NAME = 'Registro';
 const RESUMEN_NAME = 'Resumen';
 // Al subir este número, el resumen se rehace solo en el siguiente envío.
-const RESUMEN_VERSION = '5';
+const RESUMEN_VERSION = '6';
 
 // Filas fijas de la pestaña "Resumen": fechas de corte y la nota que
 // explica qué pasa si se dejan en blanco. El título va en la fila 1.
@@ -122,10 +122,21 @@ const JUSTIFICANTE_INGRESO = 'Imagen de cash';
  *                         (con factura siempre va a "Gastos con factura")
  *   sufijoFactura       : true si el nombre del archivo lleva siempre
  *                         "con factura" / "sin factura"
+ *   soloHoja            : true si el concepto no se ofrece en el
+ *                         formulario y solo se usa escribiendo la fila a
+ *                         mano en la hoja. Sigue contando en el resumen.
  */
 const CONCEPTOS = {};
 
 CONCEPTOS[INGRESO] = [
+  {
+    // Arrastre del sistema de caja anterior. Va el primero para que en el
+    // resumen quede arriba, como punto de partida. No se ofrece en el
+    // formulario: se escribe a mano, una sola vez por sede.
+    nombre: 'Saldo de caja - sistema anterior', matricula: null, detalle: 'opcional',
+    detalleAyuda: AYUDA_OPCIONAL, extra: null, soloHoja: true,
+    carpeta: 'Otros', archivo: 'Cash saldo de caja sistema anterior',
+  },
   {
     nombre: 'Reserva de moto', matricula: 'obligatorio', detalle: 'opcional',
     detalleAyuda: AYUDA_OPCIONAL, extra: null,
@@ -252,7 +263,7 @@ function doGet() {
     sedes: SEDES,
     ingreso: INGRESO,
     salida: SALIDA,
-    conceptos: CONCEPTOS,
+    conceptos: conceptosVisibles_(),
     justificanteFactura: JUSTIFICANTE_FACTURA,
     justificanteOtros: JUSTIFICANTE_OTROS,
     justificanteSin: JUSTIFICANTE_SIN,
@@ -262,6 +273,15 @@ function doGet() {
   return t.evaluate()
     .setTitle('Registro de movimientos de caja')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1');
+}
+
+/** Los conceptos que sí se ofrecen en el formulario. */
+function conceptosVisibles_() {
+  const visibles = {};
+  Object.keys(CONCEPTOS).forEach(function(tipo) {
+    visibles[tipo] = CONCEPTOS[tipo].filter(function(c) { return !c.soloHoja; });
+  });
+  return visibles;
 }
 
 function getConcepto_(tipoMovimiento, nombre) {
