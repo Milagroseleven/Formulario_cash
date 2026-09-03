@@ -1027,5 +1027,9 @@ function sincronizarMaestra() {
   }
   formatoImportes_(registro);
 
+  // El resumen también se revisa aquí: si no, una línea nueva de concepto no
+  // aparecía hasta que alguien registrara un movimiento.
+  asegurarResumen_(maestra);
+
   return { filas: filas.length, sedes: sedesLeidas };
 }

@@ -389,6 +389,9 @@ Salvaguardas:
 - Si alguna hoja de sede no se puede leer, **se cancela entera** sin tocar el
   consolidado. Es preferible tenerlo desactualizado a que le falte una sede
   por un fallo pasajero.
+- Al sincronizar también se revisa la pestaña **Resumen**: si se ha añadido
+  un concepto nuevo, aparece su línea sin esperar a que alguien registre un
+  movimiento.
 - La primera vez guarda una pestaña `Registro (copia previa)` con lo que
   hubiera antes, por si alguna fila antigua no estuviera en ninguna sede. Se
   puede borrar cuando se compruebe que todo cuadra.
