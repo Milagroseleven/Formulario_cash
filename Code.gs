@@ -150,7 +150,7 @@ CONCEPTOS[INGRESO] = [
     // propia opción. Dentro de un desplegable el navegador no deja poner
     // parte del texto en otro color: va toda en negro. "nombre" es lo único
     // que viaja a la hoja y lo que suma el resumen.
-    etiqueta: 'Venta de moto (incluye transporte, pack urban, etc.)',
+    etiqueta: 'Venta de moto (inc. todo lo que esté en el contrato: transporte, pack urban, etc.)',
   },
   {
     nombre: 'Mantenimiento', matricula: 'obligatorio', detalle: 'opcional',
@@ -409,8 +409,8 @@ function insertarOrdenado_(sheet, fila) {
 const RE_MATRICULA = /^(\d{4} [A-Z]{3}|[A-Z]{1,2} \d{4,6}( [A-Z]{1,3})?)( \d{1,2})?$/;
 
 const AVISO_MATRICULA = 'Revisa la matrícula. Formatos válidos: 3720 KDV, ' +
-  'M 8214 YV, C 2107 BWM o A 108859. Si es la segunda venta de la misma moto, ' +
-  'añade el número al final: 3720 KDV 2.';
+  'M 8214 YV, C 2107 BWM o A 108859. En los casos que corresponda, agregar el ' +
+  'número de venta al final de la matrícula: ejemplo 3720 KDV 2.';
 
 /**
  * Acepta el importe escrito con coma o con punto, y con separador de miles.
@@ -954,11 +954,45 @@ function sincronizarDesdeMenu() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   try {
     const r = sincronizarMaestra();
+    if (r.omitida) {
+      ss.toast(r.motivo, 'No se actualizó', 10);
+      return;
+    }
     ss.toast(r.filas + ' movimientos recogidos de ' + r.sedes + ' sedes.',
       'Consolidado actualizado', 8);
   } catch (err) {
     ss.toast(err.message, 'No se pudo actualizar', 10);
     throw err;
+  }
+}
+
+/**
+ * Google corta la ejecución cuando hay demasiadas cosas tocando hojas de
+ * cálculo a la vez ("Too many simultaneous invocations"). No es un fallo del
+ * proceso: pasa cuando la pasada automática coincide con alguien
+ * registrando un movimiento.
+ */
+function esErrorDeConcurrencia_(err) {
+  const m = String((err && err.message) || err).toLowerCase();
+  return m.indexOf('simultaneous') !== -1 ||
+    m.indexOf('simultáne') !== -1 ||
+    m.indexOf('too many') !== -1 ||
+    m.indexOf('demasiad') !== -1 ||
+    m.indexOf('try again') !== -1;
+}
+
+/** Abre la hoja de una sede, con un segundo intento si Google está ocupado. */
+function abrirHojaSede_(id, sede) {
+  for (let intento = 1; intento <= 2; intento++) {
+    try {
+      return SpreadsheetApp.openById(id);
+    } catch (err) {
+      if (intento === 2 || !esErrorDeConcurrencia_(err)) {
+        throw new Error('No se pudo leer la hoja de ' + sede +
+          '. No se ha tocado el consolidado, para no dejarlo incompleto.');
+      }
+      Utilities.sleep(2000);
+    }
   }
 }
 
@@ -971,6 +1005,29 @@ function sincronizarDesdeMenu() {
  * por un fallo pasajero.
  */
 function sincronizarMaestra() {
+  // Dos sincronizaciones a la vez se estorban. La segunda se salta esta
+  // pasada: como cada pasada rehace el consolidado entero, no se pierde nada.
+  const cerrojo = LockService.getScriptLock();
+  if (!cerrojo.tryLock(2000)) {
+    return { omitida: true, motivo: 'Ya había otra actualización en marcha. ' +
+      'La próxima pasada lo deja al día.' };
+  }
+  try {
+    return sincronizarAhora_();
+  } catch (err) {
+    if (esErrorDeConcurrencia_(err)) {
+      // Se sale en silencio: si se lanzara el error, Google mandaría un
+      // aviso por correo cada vez que coincide, y acabarían ignorándose.
+      return { omitida: true, motivo: 'Google estaba ocupado en ese momento. ' +
+        'La próxima pasada lo deja al día.' };
+    }
+    throw err;
+  } finally {
+    cerrojo.releaseLock();
+  }
+}
+
+function sincronizarAhora_() {
   const filas = [];
   let sedesLeidas = 0;
 
@@ -978,13 +1035,7 @@ function sincronizarMaestra() {
     const id = (SEDES_CONFIG[sede] || {}).hojaId;
     if (!id) return;
 
-    let libro;
-    try {
-      libro = SpreadsheetApp.openById(id);
-    } catch (err) {
-      throw new Error('No se pudo leer la hoja de ' + sede +
-        '. No se ha tocado el consolidado, para no dejarlo incompleto.');
-    }
+    const libro = abrirHojaSede_(id, sede);
     sedesLeidas++;
 
     const hoja = libro.getSheetByName(SHEET_NAME);
@@ -1018,12 +1069,15 @@ function sincronizarMaestra() {
     props.setProperty('copia_previa', new Date().toISOString());
   }
 
-  const ultima = registro.getLastRow();
-  if (ultima > 1) {
-    registro.getRange(2, 1, ultima - 1, HEADERS.length).clearContent();
-  }
+  // Primero se escriben las filas nuevas y después se limpia lo que sobra.
+  // Al revés, si Google cortara entre las dos operaciones, el consolidado se
+  // quedaría vacío hasta la pasada siguiente.
   if (filas.length) {
     registro.getRange(2, 1, filas.length, HEADERS.length).setValues(filas);
+  }
+  const sobran = registro.getLastRow() - (filas.length + 1);
+  if (sobran > 0) {
+    registro.getRange(filas.length + 2, 1, sobran, HEADERS.length).clearContent();
   }
   formatoImportes_(registro);
 

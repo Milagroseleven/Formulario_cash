@@ -134,7 +134,7 @@ imagen es obligatoria.
 | --- | --- | --- | --- |
 | Saldo de caja - sistema anterior *(no aparece en el formulario)* | — | Opcional | — |
 | Reserva de moto | Obligatoria | Opcional | — |
-| Venta de moto *(incluye transporte, pack urban, etc.)* | Obligatoria | Opcional | — |
+| Venta de moto *(inc. todo lo que esté en el contrato: transporte, pack urban, etc.)* | Obligatoria | Opcional | — |
 | Mantenimiento | Obligatoria | Opcional | — |
 | Ingreso de cash de otra sede | — | Opcional | Sede de origen |
 | Ajuste contable de caja | — | Obligatorio | — |
@@ -385,6 +385,20 @@ Dos maneras de lanzarla:
   ahora**. Solo funciona para quien tenga acceso a las cuatro hojas de sede.
 
 Salvaguardas:
+
+- **No se solapan dos actualizaciones.** Si al arrancar ve que ya hay otra en
+  marcha, esta pasada se salta sin ruido. Como cada pasada rehace el
+  consolidado entero, no se pierde nada.
+- **Los cortes de Google no generan avisos.** Cuando hay demasiadas cosas
+  tocando hojas a la vez, Google cancela la ejecución
+  (*"Too many simultaneous invocations"*). Pasa cuando la pasada automática
+  coincide con alguien registrando un movimiento. Se sale en silencio y la
+  siguiente pasada lo deja al día; si se dejara fallar, llegaría un correo de
+  aviso cada vez y acabarían ignorándose todos, incluido el que importe. Al
+  abrir cada hoja de sede se reintenta una vez antes de rendirse.
+- **El consolidado nunca queda vacío.** Se escriben las filas nuevas primero y
+  se limpia lo que sobra después. Al revés, un corte entre las dos
+  operaciones lo dejaría en blanco hasta la pasada siguiente.
 
 - Si alguna hoja de sede no se puede leer, **se cancela entera** sin tocar el
   consolidado. Es preferible tenerlo desactualizado a que le falte una sede
