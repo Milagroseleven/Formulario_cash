@@ -1206,9 +1206,10 @@ function getHojaMovimientos_(maestra) {
   if (!hoja) {
     hoja = maestra.insertSheet(MOVIMIENTOS_NAME);
   }
-  if (hoja.getLastRow() === 0) {
-    hoja.appendRow(MOV_HEADERS);
-  }
+  return hoja;
+}
+
+function escribirCabeceras_(hoja) {
   hoja.getRange(1, 1, 1, MOV_HEADERS.length)
     .setValues([MOV_HEADERS])
     .setFontWeight('bold')
@@ -1218,7 +1219,21 @@ function getHojaMovimientos_(maestra) {
     .setWrap(true);
   hoja.setFrozenRows(1);
   hoja.setFrozenColumns(3);
-  return hoja;
+}
+
+/**
+ * Localiza una columna por el texto de su cabecera; 0 si no aparece.
+ *
+ * Las marcas escritas a mano se recuperan buscando la columna por su nombre,
+ * nunca por su número: si se añade una columna en medio, los números bailan
+ * y las marcas se leerían de la columna equivocada. Pasó el 2026-10-02 y
+ * costó dos marcas.
+ */
+function columnaPorNombre_(cabeceras, nombre) {
+  for (let i = 0; i < cabeceras.length; i++) {
+    if (String(cabeceras[i] || '').trim() === nombre) return i + 1;
+  }
+  return 0;
 }
 
 /**
@@ -1229,17 +1244,38 @@ function getHojaMovimientos_(maestra) {
 function actualizarMovimientosVenta_(maestra) {
   const hoja = getHojaMovimientos_(maestra);
 
-  // 1. Lo que ya hay, para no perder las marcas escritas a mano.
+  // 1. Lo que ya hay, para no perder las marcas escritas a mano. Se buscan
+  //    las columnas por el texto de su cabecera: así da igual que se hayan
+  //    añadido columnas en medio desde la última pasada.
+  const NOMBRE_CODIGO = MOV_HEADERS[MOV_COL_CODIGO - 1];
+  const NOMBRE_MARCA = MOV_HEADERS[MOV_COL_MARCA - 1];
+
   const marcas = {};
   const ultima = hoja.getLastRow();
   if (ultima > 1) {
-    const previo = hoja.getRange(2, 1, ultima - 1, MOV_HEADERS.length).getValues();
-    previo.forEach(function(f) {
-      const codigo = String(f[MOV_COL_CODIGO - 1] || '').trim();
-      const marca = String(f[MOV_COL_MARCA - 1] || '').trim();
+    const ancho = Math.max(hoja.getLastColumn(), MOV_HEADERS.length);
+    const previo = hoja.getRange(1, 1, ultima, ancho).getValues();
+    const cabeceras = previo[0];
+    const colCodigo = columnaPorNombre_(cabeceras, NOMBRE_CODIGO);
+    const colMarca = columnaPorNombre_(cabeceras, NOMBRE_MARCA);
+
+    // Si no se encuentran, se para en seco: es preferible que la pestaña se
+    // quede sin actualizar —y que salte el aviso de Google— a reescribirla
+    // en blanco y llevarse por delante lo marcado a mano.
+    if (!colCodigo || !colMarca) {
+      throw new Error('En la pestaña "' + MOVIMIENTOS_NAME + '" no encuentro las ' +
+        'columnas "' + NOMBRE_CODIGO + '" y "' + NOMBRE_MARCA + '". No se ha tocado ' +
+        'nada, para no borrar lo que hubiera marcado a mano.');
+    }
+
+    for (let i = 1; i < previo.length; i++) {
+      const codigo = String(previo[i][colCodigo - 1] || '').trim();
+      const marca = String(previo[i][colMarca - 1] || '').trim();
       if (codigo && marca) marcas[codigo] = marca;
-    });
+    }
   }
+
+  escribirCabeceras_(hoja);
 
   const filas = [];
 

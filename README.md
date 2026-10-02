@@ -455,8 +455,15 @@ para que el texto sea siempre idéntico.
 **Cómo sobrevive la marca.** La lista se rehace en cada pasada de
 `sincronizarMaestra`, pero el proceso lee las marcas antes de reescribir y se
 las devuelve a cada fila **buscándolas por el código del movimiento**, nunca
-por la posición. Da igual que entren movimientos nuevos o que la lista se
-reordene: la marca sigue pegada a su movimiento.
+por la posición de la fila. Da igual que entren movimientos nuevos o que la
+lista se reordene: la marca sigue pegada a su movimiento.
+
+Y la columna de la que las lee la localiza **por el texto de su cabecera**, no
+por su número. El 2026-10-02 se añadieron dos columnas en medio, la marca pasó
+de la 13 a la 14, el proceso siguió leyendo la 13 —que ya era otra cosa— y
+borró dos marcas. Si alguna vez no encuentra las cabeceras `Código` y
+`Venta no concretada`, **no reescribe la pestaña**: lanza un error y la deja
+intacta, que es preferible a vaciarla.
 
 Si un movimiento marcado desaparece de su hoja de sede, la fila se conserva
 con el aviso *"Este movimiento ya no existe en su sede"* en lugar de borrarse
