@@ -415,18 +415,26 @@ Salvaguardas:
 Junta en una sola lista el cash de ventas y reservas de las dos épocas, para
 poder anular operaciones concretas sin perder el rastro de cuál se anuló:
 
-- Del **Histórico** (lista cerrada): una fila por matrícula, con su `Total
-  Cash` —pasado a positivo, porque allí se guarda en negativo— y la columna
-  `Otros - maestro` como dato informativo, que no suma.
-- Del **Registro**: una fila por movimiento de caja, solo los conceptos de
-  venta. Las ventas y reservas suman; las tres clases de devolución a cliente
-  **restan**, así una venta caída cuyo dinero se devolvió queda neteada sola.
+- Del **Registro histórico** (lista cerrada), arriba: una fila por matrícula.
+- Del **Registro actual**, debajo: una fila por movimiento de caja, solo los
+  conceptos de venta. Ventas y reservas suman; las tres clases de devolución
+  a cliente **restan**, así una venta caída cuyo dinero se devolvió queda
+  neteada sola.
+
+Los importes van en cuatro columnas:
+
+| Columna | Qué trae |
+| --- | --- |
+| `Histórico: Cash Otros` | Informativa. **No entra en el total.** |
+| `Histórico: Cash conciliación` | El cash del histórico, pasado a positivo |
+| `Registro actual` | El importe del movimiento, con su signo |
+| `Total Cash` | Las dos anteriores, sin `Cash Otros` |
 
 Columnas de marca, separadas a propósito:
 
 | Columna | Quién la rellena |
 | --- | --- |
-| `Venta no concretada (histórico)` | Viene del Histórico, donde se marca hoy |
+| `Venta no concretada (histórico)` | Viene del Registro histórico, donde se marca hoy |
 | `Venta no concretada` | **A mano**, para los movimientos del sistema nuevo |
 
 La de la derecha es la única que se escribe a mano, y lleva un desplegable

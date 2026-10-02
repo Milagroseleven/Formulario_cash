@@ -72,10 +72,14 @@ const USUARIOS = {
   'sergio.garcia@motickfamily.com': 'Madrid',
 };
 
-const SHEET_NAME = 'Registro';
+// La pestaña de datos no se llama igual en los dos sitios: en las hojas de
+// sede es "Registro", y en la maestra "Registro actual", para distinguirla
+// del histórico.
+const SHEET_SEDE = 'Registro';
+const SHEET_MAESTRA = 'Registro actual';
 const RESUMEN_NAME = 'Resumen';
 // Al subir este número, el resumen se rehace solo en el siguiente envío.
-const RESUMEN_VERSION = '6';
+const RESUMEN_VERSION = '7';
 
 // Filas fijas de la pestaña "Resumen": fechas de corte y la nota que
 // explica qué pasa si se dejan en blanco. El título va en la fila 1.
@@ -346,10 +350,28 @@ function formatoImportes_(sheet) {
 }
 
 /** Devuelve la pestaña "Registro" del libro, creándola con cabeceras. */
+function nombreRegistro_(spreadsheet) {
+  return (spreadsheet.getId() === SpreadsheetApp.getActiveSpreadsheet().getId())
+    ? SHEET_MAESTRA : SHEET_SEDE;
+}
+
 function getHojaRegistro_(spreadsheet) {
-  let sheet = spreadsheet.getSheetByName(SHEET_NAME);
+  const nombre = nombreRegistro_(spreadsheet);
+  let sheet = spreadsheet.getSheetByName(nombre);
+
+  // Si la maestra aún tiene la pestaña con el nombre antiguo, se renombra en
+  // vez de crear otra vacía al lado. Al renombrar, las fórmulas que la
+  // referencian se actualizan solas.
+  if (!sheet && nombre === SHEET_MAESTRA) {
+    const antigua = spreadsheet.getSheetByName(SHEET_SEDE);
+    if (antigua) {
+      antigua.setName(SHEET_MAESTRA);
+      sheet = antigua;
+    }
+  }
+
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(SHEET_NAME);
+    sheet = spreadsheet.insertSheet(nombre);
   }
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(HEADERS);
@@ -822,7 +844,7 @@ function construirResumen_(ss) {
     .setBorder(true, true, true, true, true, true, BORDE, SOLIDA);
 
   // --- Fórmulas --------------------------------------------------------
-  const reg = "'" + SHEET_NAME + "'";
+  const reg = "'" + nombreRegistro_(ss) + "'";
   const colImporte = colLetra_(COL_IMPORTE_SIGNO);
   const colTipo = colLetra_(COL_TIPO);
   const colConcepto = colLetra_(COL_CONCEPTO);
@@ -957,7 +979,7 @@ const HOJA_COPIA_PREVIA = 'Registro (copia previa)';
 // ---------------------------------------------------------------------
 const MOVIMIENTOS_NAME = 'Movimientos de venta';
 // Si alguna vez se renombra la pestaña del histórico, cambiar aquí.
-const HISTORICO_NAME = 'Histórico';
+const HISTORICO_NAME = 'Registro histórico';
 
 const MOV_HEADERS = [
   'Origen',
@@ -967,28 +989,38 @@ const MOV_HEADERS = [
   'Sede',
   'Responsable',
   'Concepto',
+  'Histórico: Cash Otros',
+  'Histórico: Cash conciliación',
+  'Registro actual',
   'Total Cash',
-  'Otros - maestro (informativo)',
   'Venta no concretada (histórico)',
   'Venta no concretada',
   'Aviso',
 ];
 
+const MOV_COL_ORIGEN = 1;
 const MOV_COL_CODIGO = 2;
+const MOV_COL_MATRICULA = 3;
 const MOV_COL_FECHA = 4;
-const MOV_COL_CASH = 8;
-const MOV_COL_OTROS = 9;
-const MOV_COL_MARCA_HIST = 10;
-const MOV_COL_MARCA = 11;   // la que se escribe a mano
-const MOV_COL_AVISO = 12;
+const MOV_COL_HIST_OTROS = 8;   // informativo: NO entra en el total
+const MOV_COL_HIST_CASH = 9;
+const MOV_COL_ACTUAL = 10;
+const MOV_COL_TOTAL = 11;
+const MOV_COL_MARCA_HIST = 12;
+const MOV_COL_MARCA = 13;       // la que se escribe a mano
+const MOV_COL_AVISO = 14;
+
+const ORIGEN_HISTORICO = 'Registro histórico';
+const ORIGEN_ACTUAL = 'Registro actual';
+const ORIGEN_SIN = '(sin origen)';
 
 const MARCA_NO_CONCRETADA = 'Venta no concretada';
 
 // Columnas del histórico que se traen (1 = A).
 const HIST_COL_MATRICULA = 1;
 const HIST_COL_RESPONSABLE = 4;
-const HIST_COL_TOTAL_CASH = 12;   // viene en negativo
-const HIST_COL_OTROS = 14;
+const HIST_COL_TOTAL_CASH = 12;   // "Cash: Total conciliación", en negativo
+const HIST_COL_OTROS = 14;        // "Cash: Otros - maestro"
 const HIST_COL_NO_CONCRETADA = 18;
 const HIST_COL_FECHA_VENTA = 19;
 
@@ -1097,7 +1129,7 @@ function sincronizarAhora_() {
     const libro = abrirHojaSede_(id, sede);
     sedesLeidas++;
 
-    const hoja = libro.getSheetByName(SHEET_NAME);
+    const hoja = libro.getSheetByName(SHEET_SEDE);
     if (!hoja || hoja.getLastRow() < 2) return;
 
     const datos = hoja.getRange(2, 1, hoja.getLastRow() - 1, HEADERS.length).getValues();
@@ -1161,9 +1193,12 @@ function getHojaMovimientos_(maestra) {
   hoja.getRange(1, 1, 1, MOV_HEADERS.length)
     .setValues([MOV_HEADERS])
     .setFontWeight('bold')
-    .setBackground('#c5d9f1')
-    .setFontColor('#1f3864');
+    .setFontColor('#ffffff')
+    .setBackground('#4f81bd')
+    .setVerticalAlignment('middle')
+    .setWrap(true);
   hoja.setFrozenRows(1);
+  hoja.setFrozenColumns(3);
   return hoja;
 }
 
@@ -1189,6 +1224,12 @@ function actualizarMovimientosVenta_(maestra) {
 
   const filas = [];
 
+  function filaVacia() {
+    const f = new Array(MOV_HEADERS.length);
+    for (let i = 0; i < f.length; i++) f[i] = '';
+    return f;
+  }
+
   // 2. Histórico: lista cerrada, una fila por matrícula. El cash viene en
   //    negativo, así que se pasa a positivo para que sume con el nuevo.
   const hist = maestra.getSheetByName(HISTORICO_NAME);
@@ -1198,14 +1239,16 @@ function actualizarMovimientosVenta_(maestra) {
     datos.forEach(function(f) {
       const matricula = String(f[HIST_COL_MATRICULA - 1] || '').trim();
       if (!matricula) return;
-      const fila = new Array(MOV_HEADERS.length).fill('');
-      fila[0] = 'Histórico';
+      const cash = -(Number(f[HIST_COL_TOTAL_CASH - 1]) || 0);
+      const fila = filaVacia();
+      fila[MOV_COL_ORIGEN - 1] = ORIGEN_HISTORICO;
       fila[MOV_COL_CODIGO - 1] = matricula;
-      fila[2] = matricula;
+      fila[MOV_COL_MATRICULA - 1] = matricula;
       fila[MOV_COL_FECHA - 1] = f[HIST_COL_FECHA_VENTA - 1] || '';
       fila[5] = f[HIST_COL_RESPONSABLE - 1] || '';
-      fila[MOV_COL_CASH - 1] = -(Number(f[HIST_COL_TOTAL_CASH - 1]) || 0);
-      fila[MOV_COL_OTROS - 1] = Number(f[HIST_COL_OTROS - 1]) || 0;
+      fila[MOV_COL_HIST_OTROS - 1] = Number(f[HIST_COL_OTROS - 1]) || 0;
+      fila[MOV_COL_HIST_CASH - 1] = cash;
+      fila[MOV_COL_TOTAL - 1] = cash;   // "Cash Otros" queda fuera a propósito
       fila[MOV_COL_MARCA_HIST - 1] = String(f[HIST_COL_NO_CONCRETADA - 1] || '').trim();
       filas.push(fila);
     });
@@ -1222,15 +1265,17 @@ function actualizarMovimientosVenta_(maestra) {
       const codigo = String(f[1] || '').trim();
       const matricula = String(f[6] || '').trim();
       if (!codigo || !matricula) return;
-      const fila = new Array(MOV_HEADERS.length).fill('');
-      fila[0] = 'Registro';
+      const importe = signo * (Number(f[COL_IMPORTE - 1]) || 0);
+      const fila = filaVacia();
+      fila[MOV_COL_ORIGEN - 1] = ORIGEN_ACTUAL;
       fila[MOV_COL_CODIGO - 1] = codigo;
-      fila[2] = matricula;
+      fila[MOV_COL_MATRICULA - 1] = matricula;
       fila[MOV_COL_FECHA - 1] = f[COL_FECHA_MOV - 1] || '';
       fila[4] = f[2] || '';
       fila[5] = f[3] || '';
       fila[6] = concepto;
-      fila[MOV_COL_CASH - 1] = signo * (Number(f[COL_IMPORTE - 1]) || 0);
+      fila[MOV_COL_ACTUAL - 1] = importe;
+      fila[MOV_COL_TOTAL - 1] = importe;
       filas.push(fila);
     });
   }
@@ -1247,18 +1292,26 @@ function actualizarMovimientosVenta_(maestra) {
   //    con un aviso: borrarla en silencio escondería que alguien anuló algo.
   Object.keys(marcas).forEach(function(codigo) {
     if (vivos[codigo]) return;
-    const fila = new Array(MOV_HEADERS.length).fill('');
-    fila[0] = '(sin origen)';
+    const fila = filaVacia();
+    fila[MOV_COL_ORIGEN - 1] = ORIGEN_SIN;
     fila[MOV_COL_CODIGO - 1] = codigo;
-    fila[MOV_COL_CASH - 1] = 0;
+    fila[MOV_COL_TOTAL - 1] = 0;
     fila[MOV_COL_MARCA - 1] = marcas[codigo];
     fila[MOV_COL_AVISO - 1] = 'Este movimiento ya no existe en su sede';
     filas.push(fila);
   });
 
-  // 6. Orden cronológico. La marca va dentro de la propia fila, así que
-  //    ordenar no la descoloca.
+  // 6. El histórico arriba y el sistema nuevo abajo; dentro de cada bloque,
+  //    por fecha. La marca viaja dentro de la fila, así que ordenar no la
+  //    descoloca.
+  const orden = {};
+  orden[ORIGEN_HISTORICO] = 0;
+  orden[ORIGEN_ACTUAL] = 1;
+  orden[ORIGEN_SIN] = 2;
   filas.sort(function(a, b) {
+    const ga = orden[a[MOV_COL_ORIGEN - 1]];
+    const gb = orden[b[MOV_COL_ORIGEN - 1]];
+    if (ga !== gb) return ga - gb;
     const fa = a[MOV_COL_FECHA - 1];
     const fb = b[MOV_COL_FECHA - 1];
     const va = (fa instanceof Date) ? fa.getTime() : Number.MAX_SAFE_INTEGER;
@@ -1283,8 +1336,13 @@ function actualizarMovimientosVenta_(maestra) {
 
 function formatoMovimientos_(hoja, cuantas) {
   const filas = Math.max(cuantas, 1);
+  const total = filas + 1;
+  // Los negativos en rojo: las devoluciones se ven de un vistazo.
+  const EUROS = '#,##0.00\u00a0€;[Red]-#,##0.00\u00a0€';
+
   hoja.getRange(2, MOV_COL_FECHA, filas, 1).setNumberFormat('dd/mm/yyyy');
-  hoja.getRange(2, MOV_COL_CASH, filas, 2).setNumberFormat(FORMATO_EUROS);
+  hoja.getRange(2, MOV_COL_HIST_OTROS, filas, 4).setNumberFormat(EUROS);
+  hoja.getRange(2, MOV_COL_TOTAL, filas, 1).setFontWeight('bold');
 
   // Desplegable en la columna que se rellena a mano, para que el texto sea
   // siempre el mismo y el consolidado pueda filtrarlo sin sorpresas.
@@ -1295,9 +1353,79 @@ function formatoMovimientos_(hoja, cuantas) {
       .setHelpText('Marca aquí las operaciones que no deben entrar en la conciliación de la venta.')
       .build());
 
-  hoja.setColumnWidth(2, 170);   // Código
-  hoja.setColumnWidth(7, 230);   // Concepto
-  hoja.setColumnWidth(10, 190);  // Venta no concretada (histórico)
-  hoja.setColumnWidth(11, 170);  // Venta no concretada
-  hoja.setColumnWidth(12, 250);  // Aviso
+  // Franjas alternas, para seguir la fila con la vista.
+  const bandas = hoja.getBandings();
+  const rangoTodo = hoja.getRange(1, 1, total, MOV_HEADERS.length);
+  if (bandas.length) {
+    bandas[0].setRange(rangoTodo);
+  } else {
+    rangoTodo.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
+  }
+
+  // Filtro, solo si no hay uno puesto: si se recreara en cada pasada, se
+  // perderían los filtros que alguien estuviera usando en ese momento.
+  if (!hoja.getFilter()) {
+    rangoTodo.createFilter();
+  }
+
+  // --- Colores ---------------------------------------------------------
+  const reglas = [];
+  const marcadas = [
+    hoja.getRange(2, MOV_COL_MARCA_HIST, filas, 1),
+    hoja.getRange(2, MOV_COL_MARCA, filas, 1),
+  ];
+  reglas.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(MARCA_NO_CONCRETADA)
+    .setBackground('#f4cccc')
+    .setFontColor('#990000')
+    .setBold(true)
+    .setRanges(marcadas)
+    .build());
+
+  // Toda la fila en rosa cuando la operación está anulada por cualquiera de
+  // las dos vías: así se ve que ese dinero no cuenta. El separador de
+  // argumentos depende de la configuración regional de la hoja, igual que en
+  // el resumen, así que se averigua en vez de darlo por supuesto.
+  const sep = separadorArgumentos_(hoja);
+  const colHist = colLetra_(MOV_COL_MARCA_HIST);
+  const colMan = colLetra_(MOV_COL_MARCA);
+  reglas.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=OR($' + colHist + '2="' + MARCA_NO_CONCRETADA + '"' + sep +
+      '$' + colMan + '2="' + MARCA_NO_CONCRETADA + '")')
+    .setBackground('#fce8e6')
+    .setRanges([hoja.getRange(2, 1, filas, MOV_COL_ACTUAL)])
+    .build());
+
+  reglas.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenCellNotEmpty()
+    .setBackground('#fff2cc')
+    .setFontColor('#7f6000')
+    .setRanges([hoja.getRange(2, MOV_COL_AVISO, filas, 1)])
+    .build());
+
+  reglas.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(ORIGEN_HISTORICO)
+    .setFontColor('#1f3864')
+    .setRanges([hoja.getRange(2, MOV_COL_ORIGEN, filas, 1)])
+    .build());
+
+  reglas.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(ORIGEN_ACTUAL)
+    .setFontColor('#0b6b3a')
+    .setRanges([hoja.getRange(2, MOV_COL_ORIGEN, filas, 1)])
+    .build());
+
+  hoja.setConditionalFormatRules(reglas);
+
+  hoja.setColumnWidth(MOV_COL_ORIGEN, 130);
+  hoja.setColumnWidth(MOV_COL_CODIGO, 170);
+  hoja.setColumnWidth(7, 230);
+  hoja.setColumnWidth(MOV_COL_HIST_OTROS, 130);
+  hoja.setColumnWidth(MOV_COL_HIST_CASH, 150);
+  hoja.setColumnWidth(MOV_COL_ACTUAL, 130);
+  hoja.setColumnWidth(MOV_COL_TOTAL, 120);
+  hoja.setColumnWidth(MOV_COL_MARCA_HIST, 190);
+  hoja.setColumnWidth(MOV_COL_MARCA, 170);
+  hoja.setColumnWidth(MOV_COL_AVISO, 250);
+  hoja.setRowHeight(1, 42);
 }
