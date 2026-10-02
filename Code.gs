@@ -998,7 +998,7 @@ const MOV_HEADERS = [
   'Total Cash',
   'Venta no concretada (histórico)',
   'Venta no concretada',
-  'Aviso',
+  'Comentarios',
 ];
 
 const MOV_COL_ORIGEN = 1;
@@ -1011,7 +1011,9 @@ const MOV_COL_ACTUAL = 10;
 const MOV_COL_TOTAL = 11;
 const MOV_COL_MARCA_HIST = 12;
 const MOV_COL_MARCA = 13;       // la que se escribe a mano
-const MOV_COL_AVISO = 14;
+const MOV_COL_COMENTARIO = 14;  // también se escribe a mano
+
+const AVISO_SIN_ORIGEN = 'Este movimiento ya no existe en su sede';
 
 const ORIGEN_HISTORICO = 'Registro histórico';
 const ORIGEN_ACTUAL = 'Registro actual';
@@ -1220,15 +1222,21 @@ function getHojaMovimientos_(maestra) {
 function actualizarMovimientosVenta_(maestra) {
   const hoja = getHojaMovimientos_(maestra);
 
-  // 1. Lo que ya hay, para no perder las marcas escritas a mano.
+  // 1. Lo que ya hay, para no perder lo escrito a mano: ni la marca ni los
+  //    comentarios. El aviso que pone el propio proceso no se conserva, que
+  //    para eso se vuelve a calcular.
   const marcas = {};
+  const comentarios = {};
   const ultima = hoja.getLastRow();
   if (ultima > 1) {
     const previo = hoja.getRange(2, 1, ultima - 1, MOV_HEADERS.length).getValues();
     previo.forEach(function(f) {
       const codigo = String(f[MOV_COL_CODIGO - 1] || '').trim();
+      if (!codigo) return;
       const marca = String(f[MOV_COL_MARCA - 1] || '').trim();
-      if (codigo && marca) marcas[codigo] = marca;
+      const comentario = String(f[MOV_COL_COMENTARIO - 1] || '').trim();
+      if (marca) marcas[codigo] = marca;
+      if (comentario && comentario !== AVISO_SIN_ORIGEN) comentarios[codigo] = comentario;
     });
   }
 
@@ -1296,18 +1304,25 @@ function actualizarMovimientosVenta_(maestra) {
     const codigo = String(fila[MOV_COL_CODIGO - 1]);
     vivos[codigo] = true;
     fila[MOV_COL_MARCA - 1] = marcas[codigo] || '';
+    fila[MOV_COL_COMENTARIO - 1] = comentarios[codigo] || '';
   });
 
   // 5. Si un movimiento marcado desaparece de su sede, la fila se conserva
   //    con un aviso: borrarla en silencio escondería que alguien anuló algo.
-  Object.keys(marcas).forEach(function(codigo) {
+  const huerfanos = {};
+  Object.keys(marcas).forEach(function(c) { huerfanos[c] = true; });
+  Object.keys(comentarios).forEach(function(c) { huerfanos[c] = true; });
+
+  Object.keys(huerfanos).forEach(function(codigo) {
     if (vivos[codigo]) return;
     const fila = filaVacia();
     fila[MOV_COL_ORIGEN - 1] = ORIGEN_SIN;
     fila[MOV_COL_CODIGO - 1] = codigo;
     fila[MOV_COL_TOTAL - 1] = 0;
-    fila[MOV_COL_MARCA - 1] = marcas[codigo];
-    fila[MOV_COL_AVISO - 1] = 'Este movimiento ya no existe en su sede';
+    fila[MOV_COL_MARCA - 1] = marcas[codigo] || '';
+    // Si hay comentario escrito se respeta; el "(sin origen)" de la primera
+    // columna ya cuenta lo que pasó.
+    fila[MOV_COL_COMENTARIO - 1] = comentarios[codigo] || AVISO_SIN_ORIGEN;
     filas.push(fila);
   });
 
@@ -1407,10 +1422,10 @@ function formatoMovimientos_(hoja, cuantas) {
     .build());
 
   reglas.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenCellNotEmpty()
+    .whenTextContains('ya no existe')
     .setBackground('#fff2cc')
     .setFontColor('#7f6000')
-    .setRanges([hoja.getRange(2, MOV_COL_AVISO, filas, 1)])
+    .setRanges([hoja.getRange(2, MOV_COL_COMENTARIO, filas, 1)])
     .build());
 
   reglas.push(SpreadsheetApp.newConditionalFormatRule()
@@ -1436,6 +1451,6 @@ function formatoMovimientos_(hoja, cuantas) {
   hoja.setColumnWidth(MOV_COL_TOTAL, 120);
   hoja.setColumnWidth(MOV_COL_MARCA_HIST, 190);
   hoja.setColumnWidth(MOV_COL_MARCA, 170);
-  hoja.setColumnWidth(MOV_COL_AVISO, 250);
+  hoja.setColumnWidth(MOV_COL_COMENTARIO, 280);
   hoja.setRowHeight(1, 42);
 }

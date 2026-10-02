@@ -446,9 +446,12 @@ las devuelve a cada fila **buscándolas por el código del movimiento**, nunca
 por la posición. Da igual que entren movimientos nuevos o que la lista se
 reordene: la marca sigue pegada a su movimiento.
 
-Si un movimiento marcado desaparece de su hoja de sede, la fila se conserva
-con el aviso *"Este movimiento ya no existe en su sede"* en lugar de borrarse
-en silencio: alguien lo había anulado a mano y conviene que se vea.
+La columna **Comentarios** también se escribe a mano y también se conserva
+igual, buscándola por código. Si un movimiento marcado o comentado desaparece
+de su hoja de sede, la fila se conserva en lugar de borrarse en silencio:
+alguien había escrito algo ahí y conviene que se vea. En esa fila, el Origen
+pasa a "(sin origen)" y, si no había comentario propio, se escribe
+*"Este movimiento ya no existe en su sede"*.
 
 ## Velocidad de guardado
 
