@@ -410,6 +410,38 @@ Salvaguardas:
   hubiera antes, por si alguna fila antigua no estuviera en ninguna sede. Se
   puede borrar cuando se compruebe que todo cuadra.
 
+## Pestaña "Movimientos de venta"
+
+Junta en una sola lista el cash de ventas y reservas de las dos épocas, para
+poder anular operaciones concretas sin perder el rastro de cuál se anuló:
+
+- Del **Histórico** (lista cerrada): una fila por matrícula, con su `Total
+  Cash` —pasado a positivo, porque allí se guarda en negativo— y la columna
+  `Otros - maestro` como dato informativo, que no suma.
+- Del **Registro**: una fila por movimiento de caja, solo los conceptos de
+  venta. Las ventas y reservas suman; las tres clases de devolución a cliente
+  **restan**, así una venta caída cuyo dinero se devolvió queda neteada sola.
+
+Columnas de marca, separadas a propósito:
+
+| Columna | Quién la rellena |
+| --- | --- |
+| `Venta no concretada (histórico)` | Viene del Histórico, donde se marca hoy |
+| `Venta no concretada` | **A mano**, para los movimientos del sistema nuevo |
+
+La de la derecha es la única que se escribe a mano, y lleva un desplegable
+para que el texto sea siempre idéntico.
+
+**Cómo sobrevive la marca.** La lista se rehace en cada pasada de
+`sincronizarMaestra`, pero el proceso lee las marcas antes de reescribir y se
+las devuelve a cada fila **buscándolas por el código del movimiento**, nunca
+por la posición. Da igual que entren movimientos nuevos o que la lista se
+reordene: la marca sigue pegada a su movimiento.
+
+Si un movimiento marcado desaparece de su hoja de sede, la fila se conserva
+con el aviso *"Este movimiento ya no existe en su sede"* en lugar de borrarse
+en silencio: alguien lo había anulado a mano y conviene que se vea.
+
 ## Velocidad de guardado
 
 Cada envío hace unas diez operaciones contra Google (subir el archivo, buscar

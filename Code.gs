@@ -942,6 +942,65 @@ function crearResumenes() {
 
 const HOJA_COPIA_PREVIA = 'Registro (copia previa)';
 
+// ---------------------------------------------------------------------
+// PESTAÑA "MOVIMIENTOS DE VENTA"
+//
+// Junta en una sola lista el cash de ventas y reservas de las dos épocas:
+// el histórico (lista cerrada, una fila por matrícula) y el sistema nuevo
+// (una fila por movimiento de caja). Sirve para poder anular operaciones
+// concretas sin perder el rastro de cuál se anuló.
+//
+// La columna "Venta no concretada" se escribe A MANO. El proceso la
+// conserva emparejando por código, nunca por posición: aunque la lista se
+// reordene o entren movimientos nuevos, la marca sigue pegada a su
+// movimiento.
+// ---------------------------------------------------------------------
+const MOVIMIENTOS_NAME = 'Movimientos de venta';
+// Si alguna vez se renombra la pestaña del histórico, cambiar aquí.
+const HISTORICO_NAME = 'Histórico';
+
+const MOV_HEADERS = [
+  'Origen',
+  'Código',
+  'Matrícula',
+  'Fecha',
+  'Sede',
+  'Responsable',
+  'Concepto',
+  'Total Cash',
+  'Otros - maestro (informativo)',
+  'Venta no concretada (histórico)',
+  'Venta no concretada',
+  'Aviso',
+];
+
+const MOV_COL_CODIGO = 2;
+const MOV_COL_FECHA = 4;
+const MOV_COL_CASH = 8;
+const MOV_COL_OTROS = 9;
+const MOV_COL_MARCA_HIST = 10;
+const MOV_COL_MARCA = 11;   // la que se escribe a mano
+const MOV_COL_AVISO = 12;
+
+const MARCA_NO_CONCRETADA = 'Venta no concretada';
+
+// Columnas del histórico que se traen (1 = A).
+const HIST_COL_MATRICULA = 1;
+const HIST_COL_RESPONSABLE = 4;
+const HIST_COL_TOTAL_CASH = 12;   // viene en negativo
+const HIST_COL_OTROS = 14;
+const HIST_COL_NO_CONCRETADA = 18;
+const HIST_COL_FECHA_VENTA = 19;
+
+// Conceptos del sistema nuevo que son dinero de una venta, y con qué signo
+// entran: las devoluciones restan.
+const CONCEPTOS_VENTA = {};
+CONCEPTOS_VENTA['Venta de moto'] = 1;
+CONCEPTOS_VENTA['Reserva de moto'] = 1;
+CONCEPTOS_VENTA['Devolución a cliente - reserva'] = -1;
+CONCEPTOS_VENTA['Devolución a cliente - venta cancelada'] = -1;
+CONCEPTOS_VENTA['Devolución a cliente - pago en exceso'] = -1;
+
 /** Menú para forzar la actualización sin esperar al próximo repaso. */
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -1084,6 +1143,161 @@ function sincronizarAhora_() {
   // El resumen también se revisa aquí: si no, una línea nueva de concepto no
   // aparecía hasta que alguien registrara un movimiento.
   asegurarResumen_(maestra);
+  actualizarMovimientosVenta_(maestra);
 
   return { filas: filas.length, sedes: sedesLeidas };
+}
+
+
+/** Devuelve la pestaña de movimientos de venta, creándola si no existe. */
+function getHojaMovimientos_(maestra) {
+  let hoja = maestra.getSheetByName(MOVIMIENTOS_NAME);
+  if (!hoja) {
+    hoja = maestra.insertSheet(MOVIMIENTOS_NAME);
+  }
+  if (hoja.getLastRow() === 0) {
+    hoja.appendRow(MOV_HEADERS);
+  }
+  hoja.getRange(1, 1, 1, MOV_HEADERS.length)
+    .setValues([MOV_HEADERS])
+    .setFontWeight('bold')
+    .setBackground('#c5d9f1')
+    .setFontColor('#1f3864');
+  hoja.setFrozenRows(1);
+  return hoja;
+}
+
+/**
+ * Rehace la lista juntando el histórico y los movimientos de venta del
+ * sistema nuevo, conservando lo que se haya escrito en la columna
+ * "Venta no concretada".
+ */
+function actualizarMovimientosVenta_(maestra) {
+  const hoja = getHojaMovimientos_(maestra);
+
+  // 1. Lo que ya hay, para no perder las marcas escritas a mano.
+  const marcas = {};
+  const ultima = hoja.getLastRow();
+  if (ultima > 1) {
+    const previo = hoja.getRange(2, 1, ultima - 1, MOV_HEADERS.length).getValues();
+    previo.forEach(function(f) {
+      const codigo = String(f[MOV_COL_CODIGO - 1] || '').trim();
+      const marca = String(f[MOV_COL_MARCA - 1] || '').trim();
+      if (codigo && marca) marcas[codigo] = marca;
+    });
+  }
+
+  const filas = [];
+
+  // 2. Histórico: lista cerrada, una fila por matrícula. El cash viene en
+  //    negativo, así que se pasa a positivo para que sume con el nuevo.
+  const hist = maestra.getSheetByName(HISTORICO_NAME);
+  if (hist && hist.getLastRow() > 1) {
+    const ancho = Math.max(hist.getLastColumn(), HIST_COL_FECHA_VENTA);
+    const datos = hist.getRange(2, 1, hist.getLastRow() - 1, ancho).getValues();
+    datos.forEach(function(f) {
+      const matricula = String(f[HIST_COL_MATRICULA - 1] || '').trim();
+      if (!matricula) return;
+      const fila = new Array(MOV_HEADERS.length).fill('');
+      fila[0] = 'Histórico';
+      fila[MOV_COL_CODIGO - 1] = matricula;
+      fila[2] = matricula;
+      fila[MOV_COL_FECHA - 1] = f[HIST_COL_FECHA_VENTA - 1] || '';
+      fila[5] = f[HIST_COL_RESPONSABLE - 1] || '';
+      fila[MOV_COL_CASH - 1] = -(Number(f[HIST_COL_TOTAL_CASH - 1]) || 0);
+      fila[MOV_COL_OTROS - 1] = Number(f[HIST_COL_OTROS - 1]) || 0;
+      fila[MOV_COL_MARCA_HIST - 1] = String(f[HIST_COL_NO_CONCRETADA - 1] || '').trim();
+      filas.push(fila);
+    });
+  }
+
+  // 3. Sistema nuevo: una fila por movimiento de caja.
+  const registro = getHojaRegistro_(maestra);
+  if (registro.getLastRow() > 1) {
+    const datos = registro.getRange(2, 1, registro.getLastRow() - 1, HEADERS.length).getValues();
+    datos.forEach(function(f) {
+      const concepto = String(f[COL_CONCEPTO - 1] || '').trim();
+      const signo = CONCEPTOS_VENTA[concepto];
+      if (!signo) return;
+      const codigo = String(f[1] || '').trim();
+      const matricula = String(f[6] || '').trim();
+      if (!codigo || !matricula) return;
+      const fila = new Array(MOV_HEADERS.length).fill('');
+      fila[0] = 'Registro';
+      fila[MOV_COL_CODIGO - 1] = codigo;
+      fila[2] = matricula;
+      fila[MOV_COL_FECHA - 1] = f[COL_FECHA_MOV - 1] || '';
+      fila[4] = f[2] || '';
+      fila[5] = f[3] || '';
+      fila[6] = concepto;
+      fila[MOV_COL_CASH - 1] = signo * (Number(f[COL_IMPORTE - 1]) || 0);
+      filas.push(fila);
+    });
+  }
+
+  // 4. Se devuelve a cada fila su marca, buscándola por código.
+  const vivos = {};
+  filas.forEach(function(fila) {
+    const codigo = String(fila[MOV_COL_CODIGO - 1]);
+    vivos[codigo] = true;
+    fila[MOV_COL_MARCA - 1] = marcas[codigo] || '';
+  });
+
+  // 5. Si un movimiento marcado desaparece de su sede, la fila se conserva
+  //    con un aviso: borrarla en silencio escondería que alguien anuló algo.
+  Object.keys(marcas).forEach(function(codigo) {
+    if (vivos[codigo]) return;
+    const fila = new Array(MOV_HEADERS.length).fill('');
+    fila[0] = '(sin origen)';
+    fila[MOV_COL_CODIGO - 1] = codigo;
+    fila[MOV_COL_CASH - 1] = 0;
+    fila[MOV_COL_MARCA - 1] = marcas[codigo];
+    fila[MOV_COL_AVISO - 1] = 'Este movimiento ya no existe en su sede';
+    filas.push(fila);
+  });
+
+  // 6. Orden cronológico. La marca va dentro de la propia fila, así que
+  //    ordenar no la descoloca.
+  filas.sort(function(a, b) {
+    const fa = a[MOV_COL_FECHA - 1];
+    const fb = b[MOV_COL_FECHA - 1];
+    const va = (fa instanceof Date) ? fa.getTime() : Number.MAX_SAFE_INTEGER;
+    const vb = (fb instanceof Date) ? fb.getTime() : Number.MAX_SAFE_INTEGER;
+    if (va !== vb) return va - vb;
+    return String(a[MOV_COL_CODIGO - 1]).localeCompare(String(b[MOV_COL_CODIGO - 1]));
+  });
+
+  // 7. Escribir primero y limpiar el sobrante después, igual que en el
+  //    consolidado: así la lista nunca queda vacía a medias.
+  if (filas.length) {
+    hoja.getRange(2, 1, filas.length, MOV_HEADERS.length).setValues(filas);
+  }
+  const sobran = hoja.getLastRow() - (filas.length + 1);
+  if (sobran > 0) {
+    hoja.getRange(filas.length + 2, 1, sobran, MOV_HEADERS.length).clearContent();
+  }
+
+  formatoMovimientos_(hoja, filas.length);
+  return filas.length;
+}
+
+function formatoMovimientos_(hoja, cuantas) {
+  const filas = Math.max(cuantas, 1);
+  hoja.getRange(2, MOV_COL_FECHA, filas, 1).setNumberFormat('dd/mm/yyyy');
+  hoja.getRange(2, MOV_COL_CASH, filas, 2).setNumberFormat(FORMATO_EUROS);
+
+  // Desplegable en la columna que se rellena a mano, para que el texto sea
+  // siempre el mismo y el consolidado pueda filtrarlo sin sorpresas.
+  hoja.getRange(2, MOV_COL_MARCA, filas, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList([MARCA_NO_CONCRETADA], true)
+      .setAllowInvalid(false)
+      .setHelpText('Marca aquí las operaciones que no deben entrar en la conciliación de la venta.')
+      .build());
+
+  hoja.setColumnWidth(2, 170);   // Código
+  hoja.setColumnWidth(7, 230);   // Concepto
+  hoja.setColumnWidth(10, 190);  // Venta no concretada (histórico)
+  hoja.setColumnWidth(11, 170);  // Venta no concretada
+  hoja.setColumnWidth(12, 250);  // Aviso
 }
