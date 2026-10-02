@@ -1427,8 +1427,13 @@ function formatoMovimientos_(hoja, cuantas) {
     .setFontWeight('bold')
     .setFontColor('#1155cc');
 
-  // Desplegable en la columna que se rellena a mano, para que el texto sea
-  // siempre el mismo y el consolidado pueda filtrarlo sin sorpresas.
+  // Primero se quita cualquier desplegable del cuadro entero: si una versión
+  // anterior lo dejó en otra columna, al cambiar el orden se quedaría ahí
+  // pegado. Pasó con la columna 13, que dejó de ser la manual.
+  hoja.getRange(2, 1, filas, MOV_HEADERS.length).clearDataValidations();
+
+  // Desplegable solo en la columna que se rellena a mano, para que el texto
+  // sea siempre el mismo y el consolidado pueda filtrarlo sin sorpresas.
   hoja.getRange(2, MOV_COL_MARCA, filas, 1).setDataValidation(
     SpreadsheetApp.newDataValidation()
       .requireValueInList([MARCA_NO_CONCRETADA], true)
