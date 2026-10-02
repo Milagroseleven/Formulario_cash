@@ -995,10 +995,13 @@ const MOV_HEADERS = [
   'Histórico: Cash Otros',
   'Histórico: Cash conciliación',
   'Registro actual',
-  'Total Cash',
+  'Total Cash - conciliación',
+  'Total Cash - otros',
   'Venta no concretada (histórico)',
   'Venta no concretada',
   'Alerta cambios en reportes originales',
+  'Total Cash - conciliación - rev',
+  'Total Cash - otros - rev',
 ];
 
 const MOV_COL_ORIGEN = 1;
@@ -1008,10 +1011,16 @@ const MOV_COL_FECHA = 4;
 const MOV_COL_HIST_OTROS = 8;   // informativo: NO entra en el total
 const MOV_COL_HIST_CASH = 9;
 const MOV_COL_ACTUAL = 10;
-const MOV_COL_TOTAL = 11;
-const MOV_COL_MARCA_HIST = 12;
-const MOV_COL_MARCA = 13;       // la que se escribe a mano
-const MOV_COL_AVISO = 14;
+const MOV_COL_TOTAL_CONC = 11;
+const MOV_COL_TOTAL_OTROS = 12;
+const MOV_COL_MARCA_HIST = 13;
+const MOV_COL_MARCA = 14;       // la que se escribe a mano
+const MOV_COL_AVISO = 15;
+// Los totales revisados: lo mismo que los de arriba, pero a cero cuando la
+// operación está marcada como no concretada. Van por fórmula para que
+// cambien en cuanto se marca, sin esperar a la siguiente pasada.
+const MOV_COL_REV_CONC = 16;
+const MOV_COL_REV_OTROS = 17;
 
 const ORIGEN_HISTORICO = 'Registro histórico';
 const ORIGEN_ACTUAL = 'Registro actual';
@@ -1256,9 +1265,11 @@ function actualizarMovimientosVenta_(maestra) {
       fila[MOV_COL_MATRICULA - 1] = matricula;
       fila[MOV_COL_FECHA - 1] = f[HIST_COL_FECHA_VENTA - 1] || '';
       fila[5] = f[HIST_COL_RESPONSABLE - 1] || '';
-      fila[MOV_COL_HIST_OTROS - 1] = Number(f[HIST_COL_OTROS - 1]) || 0;
+      const otros = Number(f[HIST_COL_OTROS - 1]) || 0;
+      fila[MOV_COL_HIST_OTROS - 1] = otros;
       fila[MOV_COL_HIST_CASH - 1] = cash;
-      fila[MOV_COL_TOTAL - 1] = cash;   // "Cash Otros" queda fuera a propósito
+      fila[MOV_COL_TOTAL_CONC - 1] = cash;
+      fila[MOV_COL_TOTAL_OTROS - 1] = otros;
       fila[MOV_COL_MARCA_HIST - 1] = String(f[HIST_COL_NO_CONCRETADA - 1] || '').trim();
       filas.push(fila);
     });
@@ -1285,7 +1296,8 @@ function actualizarMovimientosVenta_(maestra) {
       fila[5] = f[3] || '';
       fila[6] = concepto;
       fila[MOV_COL_ACTUAL - 1] = importe;
-      fila[MOV_COL_TOTAL - 1] = importe;
+      fila[MOV_COL_TOTAL_CONC - 1] = importe;
+      fila[MOV_COL_TOTAL_OTROS - 1] = importe;
       filas.push(fila);
     });
   }
@@ -1305,7 +1317,8 @@ function actualizarMovimientosVenta_(maestra) {
     const fila = filaVacia();
     fila[MOV_COL_ORIGEN - 1] = ORIGEN_SIN;
     fila[MOV_COL_CODIGO - 1] = codigo;
-    fila[MOV_COL_TOTAL - 1] = 0;
+    fila[MOV_COL_TOTAL_CONC - 1] = 0;
+    fila[MOV_COL_TOTAL_OTROS - 1] = 0;
     fila[MOV_COL_MARCA - 1] = marcas[codigo];
     fila[MOV_COL_AVISO - 1] = 'Este movimiento ya no existe en su sede';
     filas.push(fila);
@@ -1330,7 +1343,24 @@ function actualizarMovimientosVenta_(maestra) {
     return String(a[MOV_COL_CODIGO - 1]).localeCompare(String(b[MOV_COL_CODIGO - 1]));
   });
 
-  // 7. Escribir primero y limpiar el sobrante después, igual que en el
+  // 7. Los totales revisados, por fórmula: se ponen a cero en cuanto alguien
+  //    marca la operación, sin esperar a la siguiente pasada. El separador de
+  //    argumentos depende de la configuración regional de la hoja.
+  const sep = separadorArgumentos_(hoja);
+  const colConc = colLetra_(MOV_COL_TOTAL_CONC);
+  const colOtros = colLetra_(MOV_COL_TOTAL_OTROS);
+  const colMarcaHist = colLetra_(MOV_COL_MARCA_HIST);
+  const colMarca = colLetra_(MOV_COL_MARCA);
+
+  filas.forEach(function(fila, i) {
+    const n = i + 2;   // la primera fila de datos es la 2
+    const anulada = 'OR($' + colMarcaHist + n + '="' + MARCA_NO_CONCRETADA + '"' + sep +
+      '$' + colMarca + n + '="' + MARCA_NO_CONCRETADA + '")';
+    fila[MOV_COL_REV_CONC - 1] = '=IF(' + anulada + sep + '0' + sep + '$' + colConc + n + ')';
+    fila[MOV_COL_REV_OTROS - 1] = '=IF(' + anulada + sep + '0' + sep + '$' + colOtros + n + ')';
+  });
+
+  // 8. Escribir primero y limpiar el sobrante después, igual que en el
   //    consolidado: así la lista nunca queda vacía a medias.
   if (filas.length) {
     hoja.getRange(2, 1, filas.length, MOV_HEADERS.length).setValues(filas);
@@ -1351,8 +1381,10 @@ function formatoMovimientos_(hoja, cuantas) {
   const EUROS = '#,##0.00\u00a0€;[Red]-#,##0.00\u00a0€';
 
   hoja.getRange(2, MOV_COL_FECHA, filas, 1).setNumberFormat('dd/mm/yyyy');
-  hoja.getRange(2, MOV_COL_HIST_OTROS, filas, 4).setNumberFormat(EUROS);
-  hoja.getRange(2, MOV_COL_TOTAL, filas, 1).setFontWeight('bold');
+  hoja.getRange(2, MOV_COL_HIST_OTROS, filas, 5).setNumberFormat(EUROS);
+  hoja.getRange(2, MOV_COL_REV_CONC, filas, 2).setNumberFormat(EUROS);
+  hoja.getRange(2, MOV_COL_TOTAL_CONC, filas, 2).setFontWeight('bold');
+  hoja.getRange(2, MOV_COL_REV_CONC, filas, 2).setFontWeight('bold');
 
   // Desplegable en la columna que se rellena a mano, para que el texto sea
   // siempre el mismo y el consolidado pueda filtrarlo sin sorpresas.
@@ -1440,9 +1472,12 @@ function formatoMovimientos_(hoja, cuantas) {
   hoja.setColumnWidth(MOV_COL_HIST_OTROS, 105);
   hoja.setColumnWidth(MOV_COL_HIST_CASH, 110);
   hoja.setColumnWidth(MOV_COL_ACTUAL, 105);
-  hoja.setColumnWidth(MOV_COL_TOTAL, 100);
+  hoja.setColumnWidth(MOV_COL_TOTAL_CONC, 110);
+  hoja.setColumnWidth(MOV_COL_TOTAL_OTROS, 110);
   hoja.setColumnWidth(MOV_COL_MARCA_HIST, 115);
   hoja.setColumnWidth(MOV_COL_MARCA, 115);
   hoja.setColumnWidth(MOV_COL_AVISO, 175);
+  hoja.setColumnWidth(MOV_COL_REV_CONC, 115);
+  hoja.setColumnWidth(MOV_COL_REV_OTROS, 110);
   hoja.setRowHeight(1, 66);
 }

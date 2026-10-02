@@ -428,7 +428,19 @@ Los importes van en cuatro columnas:
 | `Histórico: Cash Otros` | Informativa. **No entra en el total.** |
 | `Histórico: Cash conciliación` | El cash del histórico, pasado a positivo |
 | `Registro actual` | El importe del movimiento, con su signo |
-| `Total Cash` | Las dos anteriores, sin `Cash Otros` |
+| `Total Cash - conciliación` | `Histórico: Cash conciliación` + `Registro actual` |
+| `Total Cash - otros` | `Histórico: Cash Otros` + `Registro actual` |
+
+Y al final, después de las marcas, los dos totales revisados:
+
+| Columna | Qué trae |
+| --- | --- |
+| `Total Cash - conciliación - rev` | Lo mismo que `Total Cash - conciliación`, **0 si la operación está marcada como no concretada** |
+| `Total Cash - otros - rev` | Lo mismo que `Total Cash - otros`, con la misma excepción |
+
+Esos dos van por fórmula, no por valor: se ponen a cero en cuanto se marca la
+casilla, sin esperar a la siguiente pasada. Cuenta cualquiera de las dos
+columnas de marca, la del histórico o la manual.
 
 Columnas de marca, separadas a propósito:
 
