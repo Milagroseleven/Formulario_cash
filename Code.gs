@@ -998,7 +998,7 @@ const MOV_HEADERS = [
   'Total Cash',
   'Venta no concretada (histórico)',
   'Venta no concretada',
-  'Aviso',
+  'Alerta cambios en reportes originales',
 ];
 
 const MOV_COL_ORIGEN = 1;
@@ -1427,15 +1427,22 @@ function formatoMovimientos_(hoja, cuantas) {
 
   hoja.setConditionalFormatRules(reglas);
 
-  hoja.setColumnWidth(MOV_COL_ORIGEN, 130);
-  hoja.setColumnWidth(MOV_COL_CODIGO, 170);
-  hoja.setColumnWidth(7, 230);
-  hoja.setColumnWidth(MOV_COL_HIST_OTROS, 130);
-  hoja.setColumnWidth(MOV_COL_HIST_CASH, 150);
-  hoja.setColumnWidth(MOV_COL_ACTUAL, 130);
-  hoja.setColumnWidth(MOV_COL_TOTAL, 120);
-  hoja.setColumnWidth(MOV_COL_MARCA_HIST, 190);
-  hoja.setColumnWidth(MOV_COL_MARCA, 170);
-  hoja.setColumnWidth(MOV_COL_AVISO, 250);
-  hoja.setRowHeight(1, 42);
+  // Columnas lo más estrechas que admite su contenido. Los títulos largos no
+  // mandan sobre el ancho: se parten en varias líneas en la cabecera, que por
+  // eso va más alta.
+  hoja.setColumnWidth(MOV_COL_ORIGEN, 110);
+  hoja.setColumnWidth(MOV_COL_CODIGO, 150);
+  hoja.setColumnWidth(MOV_COL_MATRICULA, 105);
+  hoja.setColumnWidth(MOV_COL_FECHA, 90);
+  hoja.setColumnWidth(5, 95);    // Sede
+  hoja.setColumnWidth(6, 105);   // Responsable
+  hoja.setColumnWidth(7, 165);   // Concepto
+  hoja.setColumnWidth(MOV_COL_HIST_OTROS, 105);
+  hoja.setColumnWidth(MOV_COL_HIST_CASH, 110);
+  hoja.setColumnWidth(MOV_COL_ACTUAL, 105);
+  hoja.setColumnWidth(MOV_COL_TOTAL, 100);
+  hoja.setColumnWidth(MOV_COL_MARCA_HIST, 115);
+  hoja.setColumnWidth(MOV_COL_MARCA, 115);
+  hoja.setColumnWidth(MOV_COL_AVISO, 175);
+  hoja.setRowHeight(1, 66);
 }
