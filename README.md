@@ -410,7 +410,7 @@ Salvaguardas:
   hubiera antes, por si alguna fila antigua no estuviera en ninguna sede. Se
   puede borrar cuando se compruebe que todo cuadra.
 
-## Pestaña "Movimientos de venta"
+## Pestaña "Revisión movimientos de venta"
 
 Junta en una sola lista el cash de ventas y reservas de las dos épocas, para
 poder anular operaciones concretas sin perder el rastro de cuál se anuló:

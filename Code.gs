@@ -977,7 +977,10 @@ const HOJA_COPIA_PREVIA = 'Registro (copia previa)';
 // reordene o entren movimientos nuevos, la marca sigue pegada a su
 // movimiento.
 // ---------------------------------------------------------------------
-const MOVIMIENTOS_NAME = 'Movimientos de venta';
+const MOVIMIENTOS_NAME = 'Revisión movimientos de venta';
+// Nombre que tuvo antes: si aparece, se renombra en vez de crear otra
+// pestaña al lado, para no dejar huérfanas las marcas ya escritas.
+const MOVIMIENTOS_NAME_ANTERIOR = 'Movimientos de venta';
 // Si alguna vez se renombra la pestaña del histórico, cambiar aquí.
 const HISTORICO_NAME = 'Registro histórico';
 
@@ -1184,6 +1187,13 @@ function sincronizarAhora_() {
 /** Devuelve la pestaña de movimientos de venta, creándola si no existe. */
 function getHojaMovimientos_(maestra) {
   let hoja = maestra.getSheetByName(MOVIMIENTOS_NAME);
+  if (!hoja) {
+    const antigua = maestra.getSheetByName(MOVIMIENTOS_NAME_ANTERIOR);
+    if (antigua) {
+      antigua.setName(MOVIMIENTOS_NAME);
+      hoja = antigua;
+    }
+  }
   if (!hoja) {
     hoja = maestra.insertSheet(MOVIMIENTOS_NAME);
   }
