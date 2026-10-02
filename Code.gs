@@ -1384,7 +1384,12 @@ function formatoMovimientos_(hoja, cuantas) {
   hoja.getRange(2, MOV_COL_HIST_OTROS, filas, 5).setNumberFormat(EUROS);
   hoja.getRange(2, MOV_COL_REV_CONC, filas, 2).setNumberFormat(EUROS);
   hoja.getRange(2, MOV_COL_TOTAL_CONC, filas, 2).setFontWeight('bold');
-  hoja.getRange(2, MOV_COL_REV_CONC, filas, 2).setFontWeight('bold');
+  // Las dos revisadas van en azul: así se distingue de un vistazo lo que es
+  // fórmula de lo que es dato. El rojo de los negativos lo pone el formato de
+  // número, que manda sobre el color de letra.
+  hoja.getRange(2, MOV_COL_REV_CONC, filas, 2)
+    .setFontWeight('bold')
+    .setFontColor('#1155cc');
 
   // Desplegable en la columna que se rellena a mano, para que el texto sea
   // siempre el mismo y el consolidado pueda filtrarlo sin sorpresas.
