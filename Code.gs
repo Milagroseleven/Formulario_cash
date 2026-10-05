@@ -1031,7 +1031,7 @@ const MARCA_NO_CONCRETADA = 'Venta no concretada';
 // Columnas del histórico que se traen (1 = A).
 const HIST_COL_MATRICULA = 1;
 const HIST_COL_RESPONSABLE = 4;
-const HIST_COL_TOTAL_CASH = 12;   // "Cash: Total conciliación", en negativo
+const HIST_COL_TOTAL_CASH = 12;   // "Cash: Total conciliación"
 const HIST_COL_OTROS = 14;        // "Cash: Otros - maestro"
 const HIST_COL_NO_CONCRETADA = 18;
 const HIST_COL_FECHA_VENTA = 19;
@@ -1285,8 +1285,7 @@ function actualizarMovimientosVenta_(maestra) {
     return f;
   }
 
-  // 2. Histórico: lista cerrada, una fila por matrícula. El cash viene en
-  //    negativo, así que se pasa a positivo para que sume con el nuevo.
+  // 2. Histórico: lista cerrada, una fila por matrícula.
   const hist = maestra.getSheetByName(HISTORICO_NAME);
   if (hist && hist.getLastRow() > 1) {
     const ancho = Math.max(hist.getLastColumn(), HIST_COL_FECHA_VENTA);
@@ -1294,7 +1293,7 @@ function actualizarMovimientosVenta_(maestra) {
     datos.forEach(function(f) {
       const matricula = String(f[HIST_COL_MATRICULA - 1] || '').trim();
       if (!matricula) return;
-      const cash = -(Number(f[HIST_COL_TOTAL_CASH - 1]) || 0);
+      const cash = Number(f[HIST_COL_TOTAL_CASH - 1]) || 0;
       const fila = filaVacia();
       fila[MOV_COL_ORIGEN - 1] = ORIGEN_HISTORICO;
       fila[MOV_COL_CODIGO - 1] = matricula;

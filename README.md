@@ -426,7 +426,7 @@ Los importes van en cuatro columnas:
 | Columna | Qué trae |
 | --- | --- |
 | `Histórico: Cash Otros` | Informativa. **No entra en el total.** |
-| `Histórico: Cash conciliación` | El cash del histórico, pasado a positivo |
+| `Histórico: Cash conciliación` | El cash del histórico |
 | `Registro actual` | El importe del movimiento, con su signo |
 | `Total Cash - conciliación` | `Histórico: Cash conciliación` + `Registro actual` |
 | `Total Cash - otros` | `Histórico: Cash Otros` + `Registro actual` |
