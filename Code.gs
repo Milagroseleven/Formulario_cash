@@ -1028,13 +1028,37 @@ const ORIGEN_SIN = '(sin origen)';
 
 const MARCA_NO_CONCRETADA = 'Venta no concretada';
 
-// Columnas del histórico que se traen (1 = A).
-const HIST_COL_MATRICULA = 1;
-const HIST_COL_RESPONSABLE = 4;
-const HIST_COL_TOTAL_CASH = 12;   // "Cash: Total conciliación"
-const HIST_COL_OTROS = 14;        // "Cash: Otros - maestro"
-const HIST_COL_NO_CONCRETADA = 18;
-const HIST_COL_FECHA_VENTA = 19;
+// Columnas del histórico que se traen. Se localizan por el texto de su
+// cabecera, nunca por su número: esa pestaña se reordena de vez en cuando, y
+// leer por número trae los datos de la columna de al lado sin avisar.
+const HIST_CABECERAS = {
+  matricula: 'MATRICULA',
+  responsable: 'Responsable',
+  cashConciliacion: 'Cash: Total conciliación',
+  cashOtros: 'Cash: Otros - maestro',
+  noConcretada: 'Venta no concretada',
+  fechaVenta: 'Fecha venta',
+};
+
+/**
+ * Devuelve en qué columna está cada dato del histórico. Si falta alguna, se
+ * para en seco: es preferible que la pestaña no se actualice a llenarla con
+ * cifras de la columna equivocada.
+ */
+function columnasHistorico_(hist) {
+  const cabeceras = hist.getRange(1, 1, 1, hist.getLastColumn()).getValues()[0];
+  const cols = {};
+  Object.keys(HIST_CABECERAS).forEach(function(clave) {
+    const nombre = HIST_CABECERAS[clave];
+    const n = columnaPorNombre_(cabeceras, nombre);
+    if (!n) {
+      throw new Error('En la pestaña "' + HISTORICO_NAME + '" no encuentro la columna "' +
+        nombre + '". No se ha tocado nada, para no traer datos de otra columna.');
+    }
+    cols[clave] = n;
+  });
+  return cols;
+}
 
 // Conceptos del sistema nuevo que son dinero de una venta, y con qué signo
 // entran: las devoluciones restan.
@@ -1288,24 +1312,20 @@ function actualizarMovimientosVenta_(maestra) {
   // 2. Histórico: lista cerrada, una fila por matrícula.
   const hist = maestra.getSheetByName(HISTORICO_NAME);
   if (hist && hist.getLastRow() > 1) {
-    const ancho = Math.max(hist.getLastColumn(), HIST_COL_FECHA_VENTA);
-    const datos = hist.getRange(2, 1, hist.getLastRow() - 1, ancho).getValues();
+    const col = columnasHistorico_(hist);
+    const datos = hist.getRange(2, 1, hist.getLastRow() - 1, hist.getLastColumn()).getValues();
     datos.forEach(function(f) {
-      const matricula = String(f[HIST_COL_MATRICULA - 1] || '').trim();
+      const matricula = String(f[col.matricula - 1] || '').trim();
       if (!matricula) return;
-      const cash = Number(f[HIST_COL_TOTAL_CASH - 1]) || 0;
       const fila = filaVacia();
       fila[MOV_COL_ORIGEN - 1] = ORIGEN_HISTORICO;
       fila[MOV_COL_CODIGO - 1] = matricula;
       fila[MOV_COL_MATRICULA - 1] = matricula;
-      fila[MOV_COL_FECHA - 1] = f[HIST_COL_FECHA_VENTA - 1] || '';
-      fila[5] = f[HIST_COL_RESPONSABLE - 1] || '';
-      const otros = Number(f[HIST_COL_OTROS - 1]) || 0;
-      fila[MOV_COL_HIST_OTROS - 1] = otros;
-      fila[MOV_COL_HIST_CASH - 1] = cash;
-      fila[MOV_COL_TOTAL_CONC - 1] = cash;
-      fila[MOV_COL_TOTAL_OTROS - 1] = otros;
-      fila[MOV_COL_MARCA_HIST - 1] = String(f[HIST_COL_NO_CONCRETADA - 1] || '').trim();
+      fila[MOV_COL_FECHA - 1] = f[col.fechaVenta - 1] || '';
+      fila[5] = f[col.responsable - 1] || '';
+      fila[MOV_COL_HIST_OTROS - 1] = Number(f[col.cashOtros - 1]) || 0;
+      fila[MOV_COL_HIST_CASH - 1] = Number(f[col.cashConciliacion - 1]) || 0;
+      fila[MOV_COL_MARCA_HIST - 1] = String(f[col.noConcretada - 1] || '').trim();
       filas.push(fila);
     });
   }
@@ -1331,8 +1351,6 @@ function actualizarMovimientosVenta_(maestra) {
       fila[5] = f[3] || '';
       fila[6] = concepto;
       fila[MOV_COL_ACTUAL - 1] = importe;
-      fila[MOV_COL_TOTAL_CONC - 1] = importe;
-      fila[MOV_COL_TOTAL_OTROS - 1] = importe;
       filas.push(fila);
     });
   }
@@ -1352,8 +1370,6 @@ function actualizarMovimientosVenta_(maestra) {
     const fila = filaVacia();
     fila[MOV_COL_ORIGEN - 1] = ORIGEN_SIN;
     fila[MOV_COL_CODIGO - 1] = codigo;
-    fila[MOV_COL_TOTAL_CONC - 1] = 0;
-    fila[MOV_COL_TOTAL_OTROS - 1] = 0;
     fila[MOV_COL_MARCA - 1] = marcas[codigo];
     fila[MOV_COL_AVISO - 1] = 'Este movimiento ya no existe en su sede';
     filas.push(fila);
@@ -1387,8 +1403,19 @@ function actualizarMovimientosVenta_(maestra) {
   const colMarcaHist = colLetra_(MOV_COL_MARCA_HIST);
   const colMarca = colLetra_(MOV_COL_MARCA);
 
+  const colHistCash = colLetra_(MOV_COL_HIST_CASH);
+  const colHistOtros = colLetra_(MOV_COL_HIST_OTROS);
+  const colActual = colLetra_(MOV_COL_ACTUAL);
+
   filas.forEach(function(fila, i) {
     const n = i + 2;   // la primera fila de datos es la 2
+
+    // Los totales también van por fórmula: así se ve de un vistazo qué
+    // columnas está sumando cada uno. Son sumas simples, sin argumentos, así
+    // que el separador de la configuración regional no les afecta.
+    fila[MOV_COL_TOTAL_CONC - 1] = '=' + colHistCash + n + '+' + colActual + n;
+    fila[MOV_COL_TOTAL_OTROS - 1] = '=' + colHistOtros + n + '+' + colActual + n;
+
     const anulada = 'OR($' + colMarcaHist + n + '="' + MARCA_NO_CONCRETADA + '"' + sep +
       '$' + colMarca + n + '="' + MARCA_NO_CONCRETADA + '")';
     fila[MOV_COL_REV_CONC - 1] = '=IF(' + anulada + sep + '0' + sep + '$' + colConc + n + ')';

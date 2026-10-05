@@ -428,8 +428,14 @@ Los importes van en cuatro columnas:
 | `Histórico: Cash Otros` | Informativa. **No entra en el total.** |
 | `Histórico: Cash conciliación` | El cash del histórico |
 | `Registro actual` | El importe del movimiento, con su signo |
-| `Total Cash - conciliación` | `Histórico: Cash conciliación` + `Registro actual` |
-| `Total Cash - otros` | `Histórico: Cash Otros` + `Registro actual` |
+| `Total Cash - conciliación` | `Histórico: Cash conciliación` + `Registro actual`, por fórmula |
+| `Total Cash - otros` | `Histórico: Cash Otros` + `Registro actual`, por fórmula |
+
+Las columnas del histórico se localizan **por el texto de su cabecera**
+(`MATRICULA`, `Cash: Total conciliación`, `Cash: Otros - maestro`,
+`Venta no concretada`, `Fecha venta`, `Responsable`), nunca por su número:
+esa pestaña se reordena de vez en cuando. Si falta alguna, el proceso se para
+sin tocar nada en lugar de traer cifras de la columna de al lado.
 
 Y al final, después de las marcas, los dos totales revisados:
 
