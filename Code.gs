@@ -1468,13 +1468,15 @@ function formatoMovimientos_(hoja, cuantas) {
       .build());
 
   // Franjas alternas, para seguir la fila con la vista.
-  const bandas = hoja.getBandings();
+  //
+  // Se quitan todas antes de poner la buena. Si se intenta mover una banda a
+  // un tramo que ya tiene otra, Google lo rechaza; y basta con que alguien
+  // aplique colores alternos a mano, o que quede una banda suelta de una
+  // pasada anterior, para que la pestaña deje de actualizarse cada diez
+  // minutos. Pasó el 2026-10-25: dos bandas, una de ellas de una sola fila.
   const rangoTodo = hoja.getRange(1, 1, total, MOV_HEADERS.length);
-  if (bandas.length) {
-    bandas[0].setRange(rangoTodo);
-  } else {
-    rangoTodo.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
-  }
+  hoja.getBandings().forEach(function(banda) { banda.remove(); });
+  rangoTodo.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
 
   // Filtro, solo si no hay uno puesto: si se recreara en cada pasada, se
   // perderían los filtros que alguien estuviera usando en ese momento.
